@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Swal from 'sweetalert2'
 
 export default function RegisterPage() {
   const [firstName, setFirstName] = useState('')
@@ -18,17 +19,17 @@ export default function RegisterPage() {
     e.preventDefault()
 
     if (!firstName || !lastName || !email || !password) {
-      alert('กรุณากรอกข้อมูลให้ครบถ้วน')
+      Swal.fire('ข้อมูลไม่ครบถ้วน', 'กรุณากรอกข้อมูลให้ครบถ้วน', 'warning')
       return
     }
 
     if (password !== confirmPassword) {
-      alert('รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง')
+      Swal.fire('รหัสผ่านไม่ตรงกัน', 'กรุณาตรวจสอบอีกครั้ง', 'error')
       return
     }
 
     if (password.length < 6) {
-      alert('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร')
+      Swal.fire('รหัสผ่านสั้นเกินไป', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'warning')
       return
     }
 
@@ -57,8 +58,14 @@ export default function RegisterPage() {
         if (profileError) throw profileError
       }
 
-      alert('สมัครสมาชิกสำเร็จ 🎉 กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี')
-      router.push('/login')
+      Swal.fire({
+        title: 'สมัครสมาชิกสำเร็จ 🎉',
+        text: 'กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี',
+        icon: 'success',
+        confirmButtonText: 'ตกลง'
+      }).then(() => {
+        router.push('/login')
+      })
 
     } catch (error) {
       console.error('Registration Error:', error)
@@ -67,7 +74,7 @@ export default function RegisterPage() {
       if (msg === 'User already registered') msg = 'อีเมลนี้ถูกใช้งานไปแล้ว'
       if (msg === 'Password should be at least 6 characters') msg = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
 
-      alert(msg)
+      Swal.fire('สมัครสมาชิกไม่สำเร็จ', msg, 'error')
     } finally {
       setLoading(false)
     }

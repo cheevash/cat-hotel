@@ -4,66 +4,85 @@ import { supabase } from '@/lib/supabase'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
+// Swiper
+import { Swiper, SwiperSlide } from 'swiper/react'
+import { Navigation, Pagination, Autoplay } from 'swiper/modules'
+import 'swiper/css'
+import 'swiper/css/navigation'
+import 'swiper/css/pagination'
+
 export default function RoomDetail() {
   const { id } = useParams()
   const [room, setRoom] = useState(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
   const searchParams = useSearchParams()
   const checkInDate = searchParams.get('checkIn')
 
   useEffect(() => {
     const fetchRoom = async () => {
-      const { data } = await supabase.from('rooms').select('*').eq('id', id).single()
-      setRoom(data)
+      setLoading(true)
+      const { data, error } = await supabase.from('rooms').select('*').eq('id', id).single()
+      if (error) {
+        console.error(error)
+      } else {
+        setRoom(data)
+      }
+      setLoading(false)
     }
-    fetchRoom()
+    if (id) fetchRoom()
   }, [id])
 
-  // รูปภาพตามประเภทห้อง
-  const getRoomImage = (type) => {
-    if (type?.toLowerCase().includes('vip')) {
-      return 'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=800&h=600&fit=crop'
+  // รูปภาพ (Fallback)
+  const getRoomImages = () => {
+    if (room?.images && room.images.length > 0) return room.images
+    if (room?.image_url) return [room.image_url]
+
+    // Fallback static
+    const type = room?.room_type
+    if (type?.toLowerCase()?.includes('vip')) {
+      return ['https://images.unsplash.com/photo-1574158622682-e40e69881006?w=800&h=600&fit=crop']
     }
-    if (type?.toLowerCase().includes('deluxe') || type?.toLowerCase().includes('suite')) {
-      return 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=800&h=600&fit=crop'
-    }
-    return 'https://images.unsplash.com/photo-1615497001839-b0a0eac3274c?w=800&h=600&fit=crop'
+    return ['https://images.unsplash.com/photo-1615497001839-b0a0eac3274c?w=800&h=600&fit=crop']
   }
 
-  // Features ตามประเภทห้อง
-  const getAmenities = (type) => {
+  // Amenities (From DB or Fallback)
+  const getAmenities = () => {
+    if (room?.amenities && Array.isArray(room.amenities) && room.amenities.length > 0) {
+      return room.amenities.map(a => ({ name: a, icon: '✨' }))
+    }
+
+    const type = room?.room_type
     const base = [
-      { icon: '❄️', name: 'แอร์ 24 ชม.', desc: 'ควบคุมอุณหภูมิอัตโนมัติ' },
-      { icon: '🧼', name: 'ทำความสะอาด 2 ครั้ง/วัน', desc: 'ด้วยน้ำยาปลอดภัย' },
-      { icon: '🏥', name: 'ใกล้ รพ.สัตว์', desc: 'เดินทาง 10 นาที' },
+      { icon: '❄️', name: 'แอร์ 24 ชม.' },
+      { icon: 'gl', name: 'ทำความสะอาด 2 ครั้ง/วัน' },
+      { icon: '🏥', name: 'ใกล้ รพ.สัตว์' },
     ]
 
-    if (type?.toLowerCase().includes('vip')) {
-      return [
-        { icon: '❄️', name: 'ระบบ HEPA Filter', desc: 'กรองอากาศบริสุทธิ์' },
-        { icon: '📹', name: 'CCTV ส่วนตัว 24 ชม.', desc: 'ดูสดผ่านแอปได้' },
-        { icon: '👤', name: 'พี่เลี้ยงส่วนตัว', desc: 'ดูแลใกล้ชิด 24 ชม.' },
-        { icon: '🎡', name: 'ของเล่น Premium', desc: 'หอคอย, น้ำพุ, อุโมงค์' },
-        { icon: '📞', name: 'Video Call', desc: 'คุยกับน้องได้ทุกเมื่อ' },
-        { icon: '🛁', name: 'สปา & อาบน้ำฟรี', desc: 'รวมในราคาห้องแล้ว' },
-      ]
-    }
-    if (type?.toLowerCase().includes('deluxe')) {
+    if (type?.toLowerCase()?.includes('vip')) {
       return [
         ...base,
-        { icon: '📹', name: 'CCTV ส่วนตัว', desc: 'ดูสดได้ตลอดเวลา' },
-        { icon: '🎡', name: 'ของเล่นชุดใหญ่', desc: 'หอคอยและน้ำพุแมว' },
-        { icon: '⛲', name: 'น้ำพุแมว Premium', desc: 'น้ำสะอาดไหลตลอด' },
+        { icon: '📹', name: 'CCTV ส่วนตัว 24 ชม.' },
+        { icon: '👤', name: 'พี่เลี้ยงส่วนตัว' },
+        { icon: '🎡', name: 'ของเล่น Premium' },
       ]
     }
+    return base
+  }
+
+  const getRules = () => {
+    if (room?.rules && Array.isArray(room.rules) && room.rules.length > 0) {
+      return room.rules
+    }
     return [
-      ...base,
-      { icon: '📹', name: 'CCTV รวม', desc: 'อัพเดทรูป 2 ครั้ง/วัน' },
-      { icon: '🧶', name: 'ของเล่นพื้นฐาน', desc: 'ลูกบอล, หนูปลอม' },
+      'แมวต้องฉีดวัคซีนครบ (ภายใน 1 ปี)',
+      'เช็คอิน 09:00-20:00 / เช็คเอาท์ 09:00-12:00',
+      'นำอาหารประจำมาเองได้',
+      'ไม่รับแมวติดสัดหรือป่วยหนัก'
     ]
   }
 
-  if (!room) {
+  if (loading || !room) {
     return (
       <div style={styles.loadingPage}>
         <div style={styles.loadingContent}>
@@ -74,8 +93,11 @@ export default function RoomDetail() {
     )
   }
 
-  const isVIP = room.room_type?.toLowerCase().includes('vip')
-  const isDeluxe = room.room_type?.toLowerCase().includes('deluxe')
+  const isVIP = room.room_type?.toLowerCase()?.includes('vip')
+  const isDeluxe = room.room_type?.toLowerCase()?.includes('deluxe')
+  const images = getRoomImages()
+  const amenities = getAmenities()
+  const rules = getRules()
 
   return (
     <div style={styles.page}>
@@ -96,27 +118,37 @@ export default function RoomDetail() {
           {/* Left: Image & Gallery */}
           <div style={styles.imageSection}>
             <div style={styles.mainImageWrapper}>
-              <img
-                src={room.image_url || getRoomImage(room.room_type)}
-                alt={room.room_type}
-                style={styles.mainImage}
-              />
+              {/* Swiper Gallery */}
+              <Swiper
+                modules={[Navigation, Pagination, Autoplay]}
+                spaceBetween={0}
+                slidesPerView={1}
+                navigation
+                pagination={{ clickable: true }}
+                autoplay={{ delay: 5000 }}
+                style={{ width: '100%', height: '100%' }}
+              >
+                {images.map((img, idx) => (
+                  <SwiperSlide key={idx}>
+                    <img src={img} alt={`Room ${idx}`} style={styles.mainImage} />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
+
               {isVIP && <div style={styles.vipRibbon}>👑 VIP Suite</div>}
               {isDeluxe && <div style={styles.popularRibbon}>🔥 ยอดนิยม</div>}
             </div>
 
-            {/* Mini Gallery */}
-            <div style={styles.miniGallery}>
-              <div style={styles.miniImg}>
-                <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&h=150&fit=crop" alt="Cat" style={styles.miniImgInner} />
+            {/* Mini Gallery (Optional if using Swiper, but good for overview) */}
+            {images.length > 1 && (
+              <div style={styles.miniGallery}>
+                {images.slice(0, 4).map((img, idx) => (
+                  <div key={idx} style={styles.miniImg}>
+                    <img src={img} alt="preview" style={styles.miniImgInner} />
+                  </div>
+                ))}
               </div>
-              <div style={styles.miniImg}>
-                <img src="https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=200&h=150&fit=crop" alt="Room" style={styles.miniImgInner} />
-              </div>
-              <div style={styles.miniImg}>
-                <img src="https://images.unsplash.com/photo-1495360010541-f48722b34f7d?w=200&h=150&fit=crop" alt="Cat play" style={styles.miniImgInner} />
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Right: Room Info */}
@@ -154,34 +186,39 @@ export default function RoomDetail() {
                 {room.description || "ห้องพักสะอาด กว้างขวาง มีแอร์ส่วนตัว ออกแบบมาเพื่อให้น้องแมวรู้สึกผ่อนคลายเหมือนอยู่ที่บ้าน พร้อมระบบรักษาความปลอดภัยและพี่เลี้ยงดูแลตลอด 24 ชั่วโมง"}
               </p>
 
-              <div style={styles.roomSpecs}>
-                <div style={styles.specItem}>
-                  <span style={styles.specIcon}>📐</span>
-                  <div>
-                    <strong>ขนาดห้อง</strong>
-                    <span style={styles.specValue}>{isVIP ? '3x3 เมตร' : isDeluxe ? '2x2 เมตร' : '1.5x1.5 เมตร'}</span>
-                  </div>
+              {(room.room_size || room.capacity) && (
+                <div style={styles.roomSpecs}>
+                  {room.room_size && (
+                    <div style={styles.specItem}>
+                      <span style={styles.specIcon}>📐</span>
+                      <div>
+                        <strong>ขนาดห้อง</strong>
+                        <span style={styles.specValue}>{room.room_size}</span>
+                      </div>
+                    </div>
+                  )}
+                  {room.capacity && (
+                    <div style={styles.specItem}>
+                      <span style={styles.specIcon}>🐱</span>
+                      <div>
+                        <strong>รองรับ</strong>
+                        <span style={styles.specValue}>{room.capacity}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div style={styles.specItem}>
-                  <span style={styles.specIcon}>🐱</span>
-                  <div>
-                    <strong>รองรับ</strong>
-                    <span style={styles.specValue}>{isVIP ? '1-3 ตัว' : isDeluxe ? '1-2 ตัว' : '1 ตัว'}</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Amenities */}
             <div style={styles.infoCard}>
               <h3 style={styles.cardTitle}>✨ สิ่งอำนวยความสะดวก</h3>
               <div style={styles.amenityGrid}>
-                {getAmenities(room.room_type).map((item, idx) => (
+                {amenities.map((item, idx) => (
                   <div key={idx} style={styles.amenityItem}>
-                    <span style={styles.amenityIcon}>{item.icon}</span>
+                    <span style={styles.amenityIcon}>{item.icon || '✨'}</span>
                     <div>
                       <strong style={styles.amenityName}>{item.name}</strong>
-                      <span style={styles.amenityDesc}>{item.desc}</span>
                     </div>
                   </div>
                 ))}
@@ -192,10 +229,9 @@ export default function RoomDetail() {
             <div style={styles.rulesCard}>
               <h3 style={styles.cardTitle}>📋 กฎการเข้าพัก</h3>
               <ul style={styles.rulesList}>
-                <li>✅ แมวต้องฉีดวัคซีนครบ (ภายใน 1 ปี)</li>
-                <li>✅ เช็คอิน 09:00-20:00 / เช็คเอาท์ 09:00-12:00</li>
-                <li>✅ นำอาหารประจำมาเองได้</li>
-                <li>⚠️ ไม่รับแมวติดสัดหรือป่วยหนัก</li>
+                {rules.map((rule, idx) => (
+                  <li key={idx}>✅ {rule}</li>
+                ))}
               </ul>
             </div>
           </div>
@@ -245,12 +281,13 @@ const styles = {
 
   // Image Section
   imageSection: {},
-  mainImageWrapper: { position: 'relative', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.15)' },
-  mainImage: { width: '100%', height: '400px', objectFit: 'cover', display: 'block' },
-  vipRibbon: { position: 'absolute', top: '20px', right: '-35px', backgroundColor: '#fbbf24', color: '#1a1a2e', padding: '8px 50px', transform: 'rotate(45deg)', fontWeight: 'bold', fontSize: '0.85rem' },
-  popularRibbon: { position: 'absolute', top: '20px', left: '20px', backgroundColor: '#ea580c', color: 'white', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', fontSize: '0.9rem' },
-  miniGallery: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '20px' },
-  miniImg: { borderRadius: '16px', overflow: 'hidden', height: '100px' },
+  mainImageWrapper: { position: 'relative', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', height: '400px', backgroundColor: '#e5e7eb' },
+  mainImage: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  vipRibbon: { position: 'absolute', top: '20px', right: '-35px', backgroundColor: '#fbbf24', color: '#1a1a2e', padding: '8px 50px', transform: 'rotate(45deg)', fontWeight: 'bold', fontSize: '0.85rem', zIndex: 10 },
+  popularRibbon: { position: 'absolute', top: '20px', left: '20px', backgroundColor: '#ea580c', color: 'white', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', fontSize: '0.9rem', zIndex: 10 },
+
+  miniGallery: { display: 'flex', gap: '15px', marginTop: '20px', overflowX: 'auto', paddingBottom: '10px' },
+  miniImg: { borderRadius: '16px', overflow: 'hidden', height: '80px', minWidth: '100px', flex: '0 0 auto', cursor: 'pointer', border: '2px solid transparent' },
   miniImgInner: { width: '100%', height: '100%', objectFit: 'cover' },
 
   // Info Section
@@ -277,10 +314,9 @@ const styles = {
 
   // Amenity
   amenityGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' },
-  amenityItem: { display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '12px' },
+  amenityItem: { display: 'flex', gap: '12px', alignItems: 'center', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '12px' },
   amenityIcon: { fontSize: '1.4rem', flexShrink: 0 },
   amenityName: { display: 'block', color: '#1a1a2e', fontSize: '0.95rem' },
-  amenityDesc: { display: 'block', color: '#9ca3af', fontSize: '0.8rem' },
 
   // Rules
   rulesCard: { backgroundColor: '#fff7ed', padding: '25px', borderRadius: '20px', border: '1px solid #fed7aa' },

@@ -173,7 +173,15 @@ export default function MyBookingsPage() {
                         )}
 
                         {booking.payment_status === 'PendingApproval' && (
-                          <span style={{ padding: '8px 16px', backgroundColor: '#fef3c7', color: '#b45309', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600' }}>⏳ รอตรวจสลิป</span>
+                          <Link href={`/payment/${booking.id}`}>
+                            <button style={styles.pendingBtn}>⏳ ติดตามสถานะ</button>
+                          </Link>
+                        )}
+
+                        {(booking.payment_status === 'Paid' || booking.status === 'Confirmed') && (
+                          <Link href={`/payment/${booking.id}`}>
+                            <button style={styles.detailBtn}>📄 รายละเอียด</button>
+                          </Link>
                         )}
 
                         {booking.status === 'CheckedOut' && (
@@ -249,6 +257,8 @@ const styles = {
 
   actionButtons: { display: 'flex', gap: '10px', alignItems: 'center' },
   payBtn: { padding: '8px 16px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', boxShadow: '0 2px 5px rgba(234, 88, 12, 0.2)' },
+  pendingBtn: { padding: '8px 16px', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' },
+  detailBtn: { padding: '8px 16px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' },
   reviewBtn: { padding: '8px 16px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' },
   detailLink: { fontSize: '0.9rem', color: '#64748b', textDecoration: 'none', fontWeight: '600' }
 }

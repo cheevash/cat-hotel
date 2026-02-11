@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import Swal from 'sweetalert2'
 
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState([])
@@ -20,10 +21,15 @@ export default function AdminCustomers() {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false })
 
-    if (error) console.error(error)
-    else setCustomers(data || [])
+    if (error) {
+      console.error('Error fetching customers:', error)
+      Swal.fire('Error', error.message, 'error')
+    } else {
+      console.log('Fetched Customers:', data)
+      setCustomers(data || [])
+    }
     setLoading(false)
   }
 
@@ -65,9 +71,14 @@ export default function AdminCustomers() {
       .eq('id', editModal.id)
 
     if (error) {
-      alert('เกิดข้อผิดพลาด: ' + error.message)
+      Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
     } else {
-      alert('บันทึกข้อมูลสำเร็จ! ✅')
+      Swal.fire({
+        title: 'บันทึกสำเร็จ! ✅',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+      })
       setEditModal(null)
       fetchCustomers()
     }

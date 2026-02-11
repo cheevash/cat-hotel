@@ -4,9 +4,9 @@ import { useState, useEffect, use } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Swal from 'sweetalert2'
 
-export default function PaymentPage({ params: paramsPromise }) {
-    const params = use(paramsPromise)
+export default function PaymentPage({ params }) {
     const bookingId = params.id
     const router = useRouter()
 
@@ -34,8 +34,9 @@ export default function PaymentPage({ params: paramsPromise }) {
 
         if (error) {
             console.error('Error fetching booking:', error)
-            alert('ไม่พบข้อมูลการจอง')
-            router.push('/my-bookings')
+            Swal.fire('ไม่พบข้อมูล', 'ไม่พบข้อมูลการจอง', 'error').then(() => {
+                router.push('/my-bookings')
+            })
             return
         }
 
@@ -71,13 +72,13 @@ export default function PaymentPage({ params: paramsPromise }) {
 
         // Validate file type
         if (!file.type.startsWith('image/')) {
-            alert('กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, etc.)')
+            Swal.fire('ไฟล์ไม่ถูกต้อง', 'กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, etc.)', 'warning')
             return
         }
 
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
-            alert('ขนาดไฟล์ต้องไม่เกิน 5MB')
+            Swal.fire('ไฟล์ใหญ่เกินไป', 'ขนาดไฟล์ต้องไม่เกิน 5MB', 'warning')
             return
         }
 
@@ -89,7 +90,7 @@ export default function PaymentPage({ params: paramsPromise }) {
 
     const handleSubmitSlip = async () => {
         if (!slipFile) {
-            alert('กรุณาเลือกรูปสลิปการโอนเงิน')
+            Swal.fire('ลืมแนบสลิป?', 'กรุณาเลือกรูปสลิปการโอนเงิน', 'warning')
             return
         }
 
@@ -132,9 +133,15 @@ export default function PaymentPage({ params: paramsPromise }) {
             }
 
             setSubmitted(true)
+            Swal.fire({
+                title: 'ส่งหลักฐานสำเร็จ! ✅',
+                text: 'เราจะเร่งตรวจสอบการชำระเงินของคุณ',
+                icon: 'success',
+                confirmButtonText: 'ตกลง'
+            })
         } catch (error) {
             console.error('Upload error:', error)
-            alert('เกิดข้อผิดพลาดในการอัพโหลด: ' + error.message)
+            Swal.fire('Upload Failed', error.message, 'error')
         } finally {
             setUploading(false)
         }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Swal from 'sweetalert2';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -118,7 +119,8 @@ export default function ProfilePage() {
         </div>
 
         {/* Edit Profile Button (Mock) */}
-        <button style={styles.logoutBtn} onClick={() => alert('ฟีเจอร์แก้ไขโปรไฟล์กำลังมาเร็วๆ นี้!')}>
+        {/* Edit Profile Button (Mock) */}
+        <button style={styles.logoutBtn} onClick={() => Swal.fire('Coming Soon!', 'ฟีเจอร์แก้ไขโปรไฟล์กำลังมาเร็วๆ นี้!', 'info')}>
           ✏️ แก้ไขข้อมูลส่วนตัว
         </button>
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Swal from 'sweetalert2'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -15,7 +16,7 @@ export default function LoginPage() {
     e.preventDefault()
 
     if (!email || !password) {
-      alert('กรุณากรอกอีเมลและรหัสผ่าน')
+      Swal.fire('กรุณากรอกข้อมูล', 'กรุณากรอกอีเมลและรหัสผ่าน', 'warning')
       return
     }
 
@@ -51,7 +52,7 @@ export default function LoginPage() {
       console.error('Login error:', error.message)
       let msg = error.message
       if (msg === 'Invalid login credentials') msg = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
-      alert(msg)
+      Swal.fire('เข้าสู่ระบบไม่สำเร็จ', msg, 'error')
     } finally {
       setLoading(false)
     }

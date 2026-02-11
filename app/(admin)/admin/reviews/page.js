@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import Swal from 'sweetalert2'
 
 export default function AdminReviews() {
     const [reviews, setReviews] = useState([])
@@ -30,10 +31,24 @@ export default function AdminReviews() {
     }
 
     const handleDelete = async (id) => {
-        if (confirm('ยืนยันว่าจะลบรีวิวนี้ใช่หรือไม่?')) {
+        const result = await Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: 'คุณต้องการลบรีวิวนี้ใช่หรือไม่?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ลบรีวิว',
+            cancelButtonText: 'ยกเลิก'
+        })
+
+        if (result.isConfirmed) {
             const { error } = await supabase.from('reviews').delete().eq('id', id)
-            if (error) alert('เกิดข้อผิดพลาด: ' + error.message)
-            else fetchReviews()
+            if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
+            else {
+                Swal.fire('ลบเรียบร้อย!', '', 'success')
+                fetchReviews()
+            }
         }
     }
 
@@ -45,9 +60,15 @@ export default function AdminReviews() {
             .eq('id', replyModal.id)
 
         if (error) {
-            alert('เกิดข้อผิดพลาด: ' + error.message)
+            Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
         } else {
-            alert('บันทึกการตอบกลับสำเร็จ! ✅')
+            Swal.fire({
+                title: 'บันทึกสำเร็จ! ✅',
+                text: 'การตอบกลับถูกบันทึกแล้ว',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            })
             setReplyModal(null)
             setReplyText('')
             fetchReviews()

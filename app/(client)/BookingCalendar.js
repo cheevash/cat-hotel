@@ -7,6 +7,7 @@ import {
 import { th } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import Swal from 'sweetalert2'
 
 // เปลี่ยนตรงนี้: นำเข้า supabase จากไฟล์ config ของคุณ (น่าจะอยู่ใน lib/supabase.js หรือที่ใกล้เคียง)
 import { supabase } from '@/lib/supabase'
@@ -82,7 +83,7 @@ export default function BookingCalendar() {
 
     // 2. ถ้าห้องเต็ม ให้แจ้งเตือน
     if (available <= 0) {
-      alert('ขออภัย วันนี้ห้องเต็มแล้วครับ')
+      Swal.fire('ห้องเต็ม', 'ขออภัย วันนี้ห้องเต็มแล้วครับ', 'warning')
       return
     }
 

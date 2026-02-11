@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 import BookingCalendar from './BookingCalendar'
+import Loading from '../../loading'
 
 function RoomList() {
   const [rooms, setRooms] = useState([])
@@ -40,13 +41,13 @@ function RoomList() {
 
         setRooms(displayedRooms)
       }
-      setLoading(false)
+      setTimeout(() => setLoading(false), 2000) // Demo delay
     }
 
     fetchRooms()
   }, [])
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '40px' }}>กำลังโหลดข้อมูลห้องพัก...</div>
+  if (loading) return <Loading />
 
   // Function เลือกรูปภาพ
   const getRoomImage = (room) => {
@@ -78,6 +79,64 @@ function RoomList() {
             <div style={styles.roomPrice}>
               <span style={styles.priceAmount}>{Number(room.price_per_night || 0).toLocaleString()}</span>
               <span style={styles.priceUnit}>บาท/คืน</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ReviewList() {
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          *,
+          profiles:user_id (first_name, last_name),
+          bookings (
+            rooms (room_type)
+          )
+        `)
+        .eq('rating', 5) // Prefer 5-star reviews
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      if (data) {
+        setReviews(data)
+      }
+      setTimeout(() => setLoading(false), 2500) // Demo delay
+    }
+    fetchReviews()
+  }, [])
+
+  if (loading) return <Loading />
+
+  if (reviews.length === 0) return (
+    <div style={{ textAlign: 'center', color: '#9ca3af', fontStyle: 'italic' }}>
+      ยังไม่มีรีวิวในขณะนี้
+    </div>
+  )
+
+  return (
+    <div style={styles.testimonialGrid}>
+      {reviews.map((review) => (
+        <div key={review.id} style={styles.testimonialCard}>
+          <div style={styles.testimonialStars}>{'⭐'.repeat(review.rating)}</div>
+          <p style={styles.testimonialText}>"{review.comment}"</p>
+          <div style={styles.testimonialAuthor}>
+            <div style={styles.authorAvatar}>
+              {review.profiles?.first_name?.[0] || '🐱'}
+            </div>
+            <div>
+              <strong>{review.profiles?.first_name || 'ลูกค้า'}</strong>
+              <span style={styles.authorDate}>
+                {new Date(review.created_at).toLocaleDateString('th-TH')} • {review.bookings?.rooms?.room_type}
+              </span>
             </div>
           </div>
         </div>
@@ -204,6 +263,7 @@ export default function HomePage() {
         </div>
       </section>
 
+
       {/* Testimonials Preview */}
       <section style={styles.testimonialsSection}>
         <div style={styles.container}>
@@ -212,31 +272,7 @@ export default function HomePage() {
             <h2 style={styles.sectionTitle}>⭐ ทาสแมวพูดถึงเรา</h2>
           </div>
 
-          <div style={styles.testimonialGrid}>
-            <div style={styles.testimonialCard}>
-              <div style={styles.testimonialStars}>{'⭐'.repeat(5)}</div>
-              <p style={styles.testimonialText}>"น้องกลับมาอารมณ์ดีมาก ห้องสะอาด พี่เลี้ยงดูแลดีมาก มีรูปส่งให้ดูตลอดเลยค่ะ"</p>
-              <div style={styles.testimonialAuthor}>
-                <div style={styles.authorAvatar}>🧡</div>
-                <div>
-                  <strong>คุณแม่น้องถุงเงิน</strong>
-                  <span style={styles.authorDate}>2 สัปดาห์ที่แล้ว</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.testimonialCard}>
-              <div style={styles.testimonialStars}>{'⭐'.repeat(5)}</div>
-              <p style={styles.testimonialText}>"ที่พักสวยเหมือนคาเฟ่เลย แมวไม่เครียดเลยครับ แนะนำทาสทุกคนเลย"</p>
-              <div style={styles.testimonialAuthor}>
-                <div style={styles.authorAvatar}>🐱</div>
-                <div>
-                  <strong>คุณพ่อน้องส้ม</strong>
-                  <span style={styles.authorDate}>1 เดือนที่แล้ว</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ReviewList />
 
           <div style={styles.viewAllWrapper}>
             <Link href="/reviews">

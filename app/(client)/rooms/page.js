@@ -25,6 +25,7 @@ function RoomsContent() {
       const { data, error } = await supabase
         .from('rooms')
         .select('*')
+        .order('room_number', { ascending: true }) // Consistent ordering
 
       if (error) console.error(error)
       else {
@@ -39,24 +40,38 @@ function RoomsContent() {
     fetchRooms()
   }, [])
 
-  // รูปภาพตามประเภทห้อง
+  // รูปภาพตามประเภทห้อง (Fallback)
   const getRoomImage = (type) => {
-    if (type?.toLowerCase().includes('vip')) {
+    if (type?.toLowerCase()?.includes('vip')) {
       return 'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=600&h=400&fit=crop'
     }
-    if (type?.toLowerCase().includes('deluxe') || type?.toLowerCase().includes('suite')) {
+    if (type?.toLowerCase()?.includes('deluxe') || type?.toLowerCase()?.includes('suite')) {
       return 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=600&h=400&fit=crop'
     }
     return 'https://images.unsplash.com/photo-1615497001839-b0a0eac3274c?w=600&h=400&fit=crop'
   }
 
-  // Features ตามประเภทห้อง
-  const getRoomFeatures = (type) => {
-    if (type?.toLowerCase().includes('vip')) {
-      return ['❄️ แอร์ HEPA', '📹 CCTV ส่วนตัว', '🎡 ของเล่น Premium', '⛲ น้ำพุแมว', '👤 พี่เลี้ยงส่วนตัว']
+  // Get primary image
+  const getPrimaryImage = (room) => {
+    if (room.images && room.images.length > 0) return room.images[0]
+    if (room.image_url) return room.image_url
+    return getRoomImage(room.room_type)
+  }
+
+  // Features ตามประเภทห้อง (Fallback or Merge)
+  const getRoomFeatures = (room) => {
+    // If amenities exist in DB, use them (limit to 3-4 for card)
+    if (room.amenities && Array.isArray(room.amenities) && room.amenities.length > 0) {
+      return room.amenities.slice(0, 4).map(a => `✨ ${a}`)
     }
-    if (type?.toLowerCase().includes('deluxe') || type?.toLowerCase().includes('suite')) {
-      return ['❄️ แอร์ 24ชม.', '📹 CCTV ส่วนตัว', '🎡 ของเล่นชุดใหญ่', '⛲ น้ำพุแมว']
+
+    // Fallback based on type
+    const type = room.room_type
+    if (type?.toLowerCase()?.includes('vip')) {
+      return ['❄️ แอร์ HEPA', '📹 CCTV ส่วนตัว', '🎡 ของเล่น Premium', '👤 พี่เลี้ยงส่วนตัว']
+    }
+    if (type?.toLowerCase()?.includes('deluxe') || type?.toLowerCase()?.includes('suite')) {
+      return ['❄️ แอร์ 24ชม.', '📹 CCTV ส่วนตัว', '🎡 ของเล่นชุดใหญ่']
     }
     return ['❄️ แอร์ 24ชม.', '📹 CCTV รวม', '🧶 ของเล่นพื้นฐาน']
   }
@@ -64,7 +79,7 @@ function RoomsContent() {
   // กรองห้อง
   const filteredRooms = filter === 'all'
     ? rooms
-    : rooms.filter(r => r.room_type?.toLowerCase().includes(filter))
+    : rooms.filter(r => r.room_type?.toLowerCase()?.includes(filter))
 
   if (loading) {
     return (
@@ -132,8 +147,8 @@ function RoomsContent() {
           {filteredRooms.length > 0 ? (
             <div style={styles.grid}>
               {filteredRooms.map(room => {
-                const isPopular = room.room_type?.toLowerCase().includes('deluxe')
-                const isVIP = room.room_type?.toLowerCase().includes('vip')
+                const isPopular = room.room_type?.toLowerCase()?.includes('deluxe')
+                const isVIP = room.room_type?.toLowerCase()?.includes('vip')
 
                 return (
                   <div key={room.id} style={{
@@ -147,7 +162,7 @@ function RoomsContent() {
                     {/* รูปภาพ */}
                     <div style={styles.imageWrapper}>
                       <img
-                        src={room.image_url || getRoomImage(room.room_type)}
+                        src={getPrimaryImage(room)}
                         alt={room.room_type}
                         style={styles.roomImage}
                       />
@@ -163,6 +178,14 @@ function RoomsContent() {
                         </div>
                       </div>
 
+                      {/* Specs */}
+                      {(room.room_size || room.capacity) && (
+                        <div style={styles.specsRow}>
+                          {room.room_size && <span style={styles.specItem}>📏 {room.room_size}</span>}
+                          {room.capacity && <span style={styles.specItem}>👥 {room.capacity}</span>}
+                        </div>
+                      )}
+
                       {/* ราคา */}
                       <div style={styles.priceSection}>
                         <div style={styles.priceTag}>
@@ -173,7 +196,7 @@ function RoomsContent() {
 
                       {/* Features */}
                       <div style={styles.features}>
-                        {getRoomFeatures(room.room_type).map((feature, idx) => (
+                        {getRoomFeatures(room).map((feature, idx) => (
                           <span key={idx} style={styles.featureItem}>{feature}</span>
                         ))}
                       </div>
@@ -262,10 +285,14 @@ const styles = {
   roomImage: { width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' },
   typeBadge: { position: 'absolute', bottom: '15px', left: '15px', backgroundColor: 'rgba(0,0,0,0.7)', color: 'white', padding: '8px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 'bold' },
   cardBody: { padding: '25px' },
-  cardHeader: { marginBottom: '15px' },
+  cardHeader: { marginBottom: '10px' },
   roomNumber: { fontSize: '1.4rem', fontWeight: '700', color: '#1a1a2e', margin: '0 0 5px' },
   roomDesc: { color: '#6b7280', fontSize: '0.95rem', margin: 0, lineHeight: '1.5' },
-  priceSection: { marginBottom: '18px' },
+
+  specsRow: { display: 'flex', gap: '12px', marginBottom: '15px', flexWrap: 'wrap' },
+  specItem: { display: 'inline-block', fontSize: '0.85rem', color: '#4b5563', backgroundColor: '#f3f4f6', padding: '4px 8px', borderRadius: '6px' },
+
+  priceSection: { marginBottom: '15px' },
   priceTag: { display: 'flex', alignItems: 'baseline', gap: '5px' },
   priceAmount: { fontSize: '2rem', fontWeight: '800', color: '#ea580c' },
   priceUnit: { color: '#9ca3af', fontSize: '0.95rem' },

@@ -1,134 +1,265 @@
 'use client'
+import { useState, useEffect, Suspense } from 'react'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import Swal from 'sweetalert2'
+import { useSearchParams, useRouter } from 'next/navigation'
 
-const reviews = [
-    { name: 'คุณแม่น้องถุงเงิน', date: '2 สัปดาห์ที่แล้ว', rating: 5, text: 'น้องกลับมาอารมณ์ดีมาก ห้องสะอาด พี่เลี้ยงดูแลดีมาก มีรูปส่งให้ดูตลอดเลยค่ะ แนะนำมากๆ เลย!', avatar: '🧡', room: 'Deluxe Suite' },
-    { name: 'คุณพ่อน้องส้ม', date: '1 เดือนที่แล้ว', rating: 5, text: 'ที่พักสวยเหมือนคาเฟ่เลย แมวไม่เครียดเลยครับ แนะนำทาสทุกคนเลย ราคาก็สมเหตุสมผล', avatar: '🐱', room: 'Standard' },
-    { name: 'คุณแม่น้องโมจิ', date: '1 เดือนที่แล้ว', rating: 5, text: 'ประทับใจมากค่ะ น้องแมวได้เล่นเยอะมาก กลับบ้านมาหลับเป็นวัน พี่เลี้ยงใจดีมากๆ ดูแลเหมือนลูกเลย', avatar: '🤍', room: 'VIP Royal' },
-    { name: 'คุณปุ้ย', date: '2 เดือนที่แล้ว', rating: 4, text: 'โดยรวมดีค่ะ แต่อยากให้มีกล้องดูสดทุกห้อง จะได้หายห่วงมากขึ้น นอกนั้นโอเคหมดเลย', avatar: '😺', room: 'Standard' },
-    { name: 'คุณเจษ', date: '2 เดือนที่แล้ว', rating: 5, text: 'พาน้องมาฝากครั้งแรก กังวลมาก แต่พี่เลี้ยงดูแลดีมาก ส่งรูปมาให้ดูตลอด น้องก็แฮปปี้มาก จะกลับมาอีกแน่นอนครับ', avatar: '🐈', room: 'Deluxe Suite' },
-    { name: 'คุณมิ้นท์', date: '3 เดือนที่แล้ว', rating: 5, text: 'ห้อง VIP คุ้มค่ามากค่ะ น้องได้เล่นเยอะ มีหอคอย มีน้ำพุ พี่เลี้ยงยังโทรมาบอกว่าน้องกินข้าวหมดจานเลย หายห่วงมาก', avatar: '💜', room: 'VIP Royal' },
-    { name: 'คุณบอส', date: '3 เดือนที่แล้ว', rating: 5, text: 'ฝากน้อง 2 ตัว ได้ส่วนลดด้วย พี่เลี้ยงดูแลดีมาก น้องแมวเล่นด้วยกันตลอด กลับมาก็ร่าเริงมาก', avatar: '🧡', room: 'Deluxe Suite' },
-    { name: 'คุณนุ่น', date: '4 เดือนที่แล้ว', rating: 4, text: 'ห้องสะอาดดีค่ะ แต่ช่วงเทศกาลคนเยอะนิดนึง แต่พี่เลี้ยงก็ดูแลได้ดีค่ะ', avatar: '💛', room: 'Standard' },
-]
-
-function StarRating({ rating }) {
-    return <span style={{ color: '#fbbf24' }}>{'⭐'.repeat(rating)}{'☆'.repeat(5 - rating)}</span>
+function StarRating({ rating, setRating, interactive = false }) {
+    return (
+        <div style={{ display: 'flex', gap: '5px' }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                    key={star}
+                    style={{
+                        color: star <= rating ? '#fbbf24' : '#e5e7eb',
+                        cursor: interactive ? 'pointer' : 'default',
+                        fontSize: interactive ? '2rem' : '1rem',
+                        transition: 'transform 0.1s'
+                    }}
+                    onClick={() => interactive && setRating(star)}
+                    onMouseEnter={(e) => interactive && (e.target.style.transform = 'scale(1.2)')}
+                    onMouseLeave={(e) => interactive && (e.target.style.transform = 'scale(1)')}
+                >
+                    ★
+                </span>
+            ))}
+        </div>
+    )
 }
 
-function ReviewCard({ review }) {
+function ReviewForm({ bookingId }) {
+    const [rating, setRating] = useState(5)
+    const [comment, setComment] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [booking, setBooking] = useState(null)
+    const [submitted, setSubmitted] = useState(false)
+    const router = useRouter()
+
+    useEffect(() => {
+        const fetchBooking = async () => {
+            const { data, error } = await supabase
+                .from('bookings')
+                .select('*, rooms(room_type, room_number), cats(name)')
+                .eq('id', bookingId)
+                .single()
+            if (data) setBooking(data)
+        }
+        fetchBooking()
+    }, [bookingId])
+
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        setLoading(true)
+
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            Swal.fire('กรุณาเข้าสู่ระบบ', '', 'warning')
+            return
+        }
+
+        const { error } = await supabase
+            .from('reviews')
+            .insert({
+                booking_id: bookingId,
+                user_id: user.id,
+                rating,
+                comment
+            })
+
+        if (error) {
+            Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
+        } else {
+            setSubmitted(true)
+            setTimeout(() => {
+                router.push('/reviews') // Go to list after success
+            }, 2000)
+        }
+        setLoading(false)
+    }
+
+    if (submitted) {
+        return (
+            <div style={styles.successCard}>
+                <div style={{ fontSize: '4rem', marginBottom: '20px' }}>🎉</div>
+                <h2 style={{ color: '#059669', marginBottom: '10px' }}>ขอบคุณสำหรับรีวิว!</h2>
+                <p style={{ color: '#6b7280' }}>รีวิวของคุณถูกบันทึกเรียบร้อยแล้ว</p>
+            </div>
+        )
+    }
+
     return (
-        <div style={styles.reviewCard}>
-            <div style={styles.reviewHeader}>
-                <div style={styles.avatar}>{review.avatar}</div>
-                <div>
-                    <strong style={styles.reviewerName}>{review.name}</strong>
-                    <div style={styles.reviewMeta}>
-                        <StarRating rating={review.rating} />
-                        <span style={styles.reviewRoom}>• {review.room}</span>
+        <div style={styles.formCard}>
+            <h2 style={styles.formTitle}>✍️ เขียนรีวิวการเข้าพัก</h2>
+            {booking && (
+                <div style={styles.bookingSummary}>
+                    <p><strong>ห้อง:</strong> {booking.rooms?.room_type} ({booking.rooms?.room_number})</p>
+                    <p><strong>น้องแมว:</strong> {booking.cats?.name}</p>
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={styles.form}>
+                <div style={styles.formGroup}>
+                    <label style={styles.label}>ความพึงพอใจ</label>
+                    <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
+                        <StarRating rating={rating} setRating={setRating} interactive={true} />
+                    </div>
+                    <div style={{ textAlign: 'center', color: '#f59e0b', fontWeight: 'bold' }}>
+                        {rating === 5 ? 'ดีเยี่ยม! 😍' : rating === 4 ? 'ดีมาก 😄' : rating === 3 ? 'พอใช้ 🙂' : rating === 2 ? 'ต้องปรับปรุง 😕' : 'แย่ 😢'}
                     </div>
                 </div>
+
+                <div style={styles.formGroup}>
+                    <label style={styles.label}>ความคิดเห็นเพิ่มเติม</label>
+                    <textarea
+                        style={styles.textarea}
+                        rows={4}
+                        placeholder="เล่าประสบการณ์ของคุณ..."
+                        value={comment}
+                        onChange={e => setComment(e.target.value)}
+                        required
+                    />
+                </div>
+
+                <button type="submit" disabled={loading} style={styles.submitBtn}>
+                    {loading ? 'กำลังส่ง...' : 'ส่งรีวิว'}
+                </button>
+            </form>
+        </div>
+    )
+}
+
+function ReviewsList() {
+    const [reviews, setReviews] = useState([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchReviews = async () => {
+            // Join with profiles to get user name
+            const { data, error } = await supabase
+                .from('reviews')
+                .select(`
+                    *,
+                    bookings (
+                        rooms (room_type)
+                    ),
+                    profiles:user_id (first_name, last_name)
+                `)
+                .order('created_at', { ascending: false })
+
+            if (data) setReviews(data)
+            setLoading(false)
+        }
+        fetchReviews()
+    }, [])
+
+    if (loading) return <div style={{ textAlign: 'center', padding: '40px' }}>กำลังโหลดรีวิว...</div>
+
+    if (reviews.length === 0) return (
+        <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
+            <h3>ยังไม่มีรีวิวในขณะนี้</h3>
+            <p>เป็นคนแรกที่รีวิวเลย!</p>
+        </div>
+    )
+
+    const avgRating = (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+
+    return (
+        <div>
+            {/* Stats */}
+            <div style={styles.statsContainer}>
+                <div style={styles.ratingBig}>
+                    <span style={styles.ratingNumber}>{avgRating}</span>
+                    <div style={{ fontSize: '1.2rem', color: '#fbbf24' }}>★ ★ ★ ★ ★</div>
+                    <span style={{ color: '#6b7280' }}>จาก {reviews.length} รีวิว</span>
+                </div>
             </div>
-            <p style={styles.reviewText}>{review.text}</p>
-            <span style={styles.reviewDate}>{review.date}</span>
+
+            {/* List */}
+            <div style={styles.grid}>
+                {reviews.map((review) => (
+                    <div key={review.id} style={styles.reviewCard}>
+                        <div style={styles.cardHeader}>
+                            <div style={styles.avatar}>
+                                {review.profiles?.first_name?.[0] || '?'}
+                            </div>
+                            <div>
+                                <strong style={{ display: 'block', color: '#1f2937' }}>
+                                    {review.profiles?.first_name || 'ลูกค้า'} {review.profiles?.last_name || ''}
+                                </strong>
+                                <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+                                    {review.bookings?.rooms?.room_type || 'ห้องพัก'}
+                                </span>
+                            </div>
+                        </div>
+                        <div style={{ margin: '10px 0' }}>
+                            <StarRating rating={review.rating} />
+                        </div>
+                        <p style={styles.comment}>"{review.comment}"</p>
+                        <span style={styles.date}>
+                            {new Date(review.created_at).toLocaleDateString('th-TH')}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function ReviewsContent() {
+    const searchParams = useSearchParams()
+    const bookingId = searchParams.get('bookingId')
+
+    return (
+        <div style={styles.container}>
+            <header style={styles.header}>
+                <h1 style={styles.title}>⭐ รีวิวจากลูกค้า</h1>
+                <Link href="/" style={styles.backLink}>← กลับหน้าหลัก</Link>
+            </header>
+
+            {bookingId ? (
+                <ReviewForm bookingId={bookingId} />
+            ) : (
+                <ReviewsList />
+            )}
         </div>
     )
 }
 
 export default function ReviewsPage() {
-    const avgRating = (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-    const ratingCounts = [5, 4, 3, 2, 1].map(star => ({ star, count: reviews.filter(r => r.rating === star).length }))
-
     return (
         <div style={styles.page}>
-            {/* Hero */}
-            <section style={styles.hero}>
-                <h1 style={styles.heroTitle}>⭐ รีวิวจากลูกค้า</h1>
-                <p style={styles.heroDesc}>เสียงจากทาสแมวที่เคยมาใช้บริการ</p>
-                <Link href="/" style={styles.backLink}>← กลับหน้าหลัก</Link>
-            </section>
-
-            <div style={styles.container}>
-                {/* Rating Overview */}
-                <section style={styles.ratingOverview}>
-                    <div style={styles.ratingBig}>
-                        <span style={styles.ratingNumber}>{avgRating}</span>
-                        <div style={styles.ratingStars}><StarRating rating={Math.round(avgRating)} /></div>
-                        <span style={styles.ratingCount}>{reviews.length} รีวิว</span>
-                    </div>
-                    <div style={styles.ratingBars}>
-                        {ratingCounts.map(({ star, count }) => (
-                            <div key={star} style={styles.ratingBarRow}>
-                                <span style={styles.barLabel}>{star} ⭐</span>
-                                <div style={styles.barBg}>
-                                    <div style={{ ...styles.barFill, width: `${(count / reviews.length) * 100}%` }}></div>
-                                </div>
-                                <span style={styles.barCount}>{count}</span>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                {/* Reviews Grid */}
-                <section style={styles.reviewsSection}>
-                    <h2 style={styles.sectionTitle}>รีวิวทั้งหมด</h2>
-                    <div style={styles.reviewsGrid}>
-                        {reviews.map((review, idx) => (
-                            <ReviewCard key={idx} review={review} />
-                        ))}
-                    </div>
-                </section>
-
-                {/* CTA */}
-                <section style={styles.cta}>
-                    <h3 style={styles.ctaTitle}>มาเป็นส่วนหนึ่งของครอบครัว Cat Hotel</h3>
-                    <p style={styles.ctaDesc}>จองห้องพักวันนี้ แล้วกลับมารีวิวให้เราด้วยนะ! 🐾</p>
-                    <Link href="/rooms">
-                        <button style={styles.ctaBtn}>จองห้องพักเลย</button>
-                    </Link>
-                </section>
-            </div>
+            <Suspense fallback={<div>Loading...</div>}>
+                <ReviewsContent />
+            </Suspense>
         </div>
     )
 }
 
 const styles = {
-    page: { fontFamily: "'Sarabun', 'Kanit', sans-serif", backgroundColor: '#fafafa', minHeight: '100vh' },
-    hero: { background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', padding: '80px 20px', textAlign: 'center' },
-    heroTitle: { fontSize: '3rem', color: 'white', margin: '0 0 10px' },
-    heroDesc: { color: 'rgba(255,255,255,0.8)', fontSize: '1.2rem', margin: '0 0 20px' },
-    backLink: { color: '#fbbf24', textDecoration: 'none' },
-    container: { maxWidth: '1100px', margin: '0 auto', padding: '60px 20px' },
+    page: { backgroundColor: '#f9fafb', minHeight: '100vh', padding: '40px 20px', fontFamily: "'Sarabun', sans-serif" },
+    container: { maxWidth: '1000px', margin: '0 auto' },
+    header: { textAlign: 'center', marginBottom: '40px' },
+    title: { fontSize: '2.5rem', color: '#111827', margin: '0 0 10px', fontWeight: '800' },
+    backLink: { color: '#ea580c', textDecoration: 'none', fontWeight: '600' },
 
-    // Rating Overview
-    ratingOverview: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '60px', flexWrap: 'wrap', backgroundColor: '#fff', padding: '40px', borderRadius: '24px', marginBottom: '50px', boxShadow: '0 10px 40px rgba(0,0,0,0.05)' },
-    ratingBig: { textAlign: 'center' },
-    ratingNumber: { fontSize: '5rem', fontWeight: '800', color: '#ea580c', display: 'block' },
-    ratingStars: { fontSize: '1.5rem', marginBottom: '5px' },
-    ratingCount: { color: '#6b7280' },
-    ratingBars: { minWidth: '280px' },
-    ratingBarRow: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' },
-    barLabel: { width: '55px', fontSize: '0.9rem', color: '#374151' },
-    barBg: { flex: 1, height: '10px', backgroundColor: '#f0f0f0', borderRadius: '5px', overflow: 'hidden' },
-    barFill: { height: '100%', backgroundColor: '#fbbf24', borderRadius: '5px', transition: 'width 0.3s' },
-    barCount: { width: '25px', fontSize: '0.9rem', color: '#6b7280', textAlign: 'right' },
+    // Form
+    formCard: { backgroundColor: 'white', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', maxWidth: '600px', margin: '0 auto' },
+    formTitle: { textAlign: 'center', color: '#1f2937', marginBottom: '20px' },
+    bookingSummary: { backgroundColor: '#fff7ed', padding: '15px', borderRadius: '12px', marginBottom: '20px', color: '#9a3412', fontSize: '0.95rem' },
+    formGroup: { marginBottom: '20px' },
+    label: { display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' },
+    textarea: { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #d1d5db', fontSize: '1rem', minHeight: '120px' },
+    submitBtn: { width: '100%', padding: '15px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' },
+    successCard: { textAlign: 'center', padding: '60px', backgroundColor: 'white', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' },
 
-    // Reviews
-    reviewsSection: { marginBottom: '60px' },
-    sectionTitle: { fontSize: '1.8rem', color: '#1a1a2e', marginBottom: '25px' },
-    reviewsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px' },
-    reviewCard: { backgroundColor: '#fff', padding: '30px', borderRadius: '20px', boxShadow: '0 5px 25px rgba(0,0,0,0.05)' },
-    reviewHeader: { display: 'flex', gap: '15px', marginBottom: '18px' },
-    avatar: { width: '55px', height: '55px', borderRadius: '50%', backgroundColor: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' },
-    reviewerName: { color: '#1a1a2e', display: 'block', fontSize: '1.1rem' },
-    reviewMeta: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem' },
-    reviewRoom: { color: '#9ca3af' },
-    reviewText: { color: '#4b5563', lineHeight: '1.8', margin: '0 0 15px', fontSize: '1rem' },
-    reviewDate: { color: '#9ca3af', fontSize: '0.85rem' },
-
-    // CTA
-    cta: { backgroundColor: '#fff7ed', padding: '50px', borderRadius: '24px', textAlign: 'center', border: '2px dashed #fed7aa' },
-    ctaTitle: { fontSize: '1.5rem', color: '#ea580c', margin: '0 0 10px' },
-    ctaDesc: { color: '#6b7280', margin: '0 0 25px' },
-    ctaBtn: { padding: '16px 40px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '50px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer' },
+    // List
+    statsContainer: { textAlign: 'center', marginBottom: '40px', backgroundColor: 'white', padding: '30px', borderRadius: '20px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' },
+    ratingNumber: { fontSize: '4rem', fontWeight: '800', color: '#1f2937', lineHeight: 1 },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' },
+    reviewCard: { backgroundColor: 'white', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' },
+    cardHeader: { display: 'flex', gap: '12px', alignItems: 'center' },
+    avatar: { width: '40px', height: '40px', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' },
+    comment: { color: '#4b5563', lineHeight: '1.6', margin: '10px 0', minHeight: '60px' },
+    date: { fontSize: '0.8rem', color: '#9ca3af' },
 }

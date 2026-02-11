@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import Swal from 'sweetalert2'
 
 export default function AdminSettings() {
     const [loading, setLoading] = useState(true)
@@ -50,7 +51,13 @@ export default function AdminSettings() {
         // await supabase.from('settings').upsert(settings)
 
         setTimeout(() => {
-            alert('บันทึกการตั้งค่าสำเร็จ! ✅')
+            Swal.fire({
+                title: 'บันทึกสำเร็จ! ✅',
+                text: 'การตั้งค่าถูกบันทึกเรียบร้อยแล้ว',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false
+            })
             setSaving(false)
         }, 500)
     }

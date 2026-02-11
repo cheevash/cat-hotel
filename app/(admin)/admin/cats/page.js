@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import Swal from 'sweetalert2'
 
 export default function AdminCats() {
     const [cats, setCats] = useState([])
@@ -29,6 +30,7 @@ export default function AdminCats() {
         const { data, error } = await supabase
             .from('cats')
             .select('*, profiles(first_name, last_name, email)')
+            .eq('is_deleted', false)
             .order('created_at', { ascending: false })
 
         if (error) {
@@ -47,7 +49,6 @@ export default function AdminCats() {
             .order('first_name')
         setOwners(data || [])
     }
-
     const openAddModal = () => {
         setEditingCat(null)
         setFormData({
@@ -95,9 +96,14 @@ export default function AdminCats() {
                 .update(catData)
                 .eq('id', editingCat.id)
 
-            if (error) alert('เกิดข้อผิดพลาด: ' + error.message)
+            if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
             else {
-                alert('แก้ไขข้อมูลแมวสำเร็จ! 🐱')
+                Swal.fire({
+                    title: 'แก้ไขข้อมูลแมวสำเร็จ! 🐱',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                })
                 setShowModal(false)
                 fetchCats()
             }
@@ -106,20 +112,50 @@ export default function AdminCats() {
                 .from('cats')
                 .insert([catData])
 
-            if (error) alert('เกิดข้อผิดพลาด: ' + error.message)
+            if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
             else {
-                alert('เพิ่มแมวใหม่สำเร็จ! 🐱')
+                Swal.fire({
+                    title: 'เพิ่มแมวใหม่สำเร็จ! 🐱',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                })
                 setShowModal(false)
                 fetchCats()
             }
         }
     }
-
     const handleDelete = async (id, name) => {
-        if (confirm(`ยืนยันว่าจะลบข้อมูล "${name}" ใช่หรือไม่?`)) {
-            const { error } = await supabase.from('cats').delete().eq('id', id)
-            if (error) alert('เกิดข้อผิดพลาด: ' + error.message)
-            else fetchCats()
+        const result = await Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: `คุณต้องการลบข้อมูล "${name}" ใช่หรือไม่?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ลบข้อมูล',
+            cancelButtonText: 'ยกเลิก'
+        })
+
+        if (result.isConfirmed) {
+            // Soft delete: Update is_deleted = true
+            const { error } = await supabase
+                .from('cats')
+                .update({ is_deleted: true })
+                .eq('id', id)
+
+            if (error) {
+                // Handle specific foreign key error just in case, though soft delete prevents it
+                if (error.code === '23503') {
+                    Swal.fire('ไม่สามารถลบได้', 'แมวตัวนี้มีประวัติการจองอยู่ ไม่สามารถลบถาวรได้', 'error')
+                } else {
+                    Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
+                }
+            }
+            else {
+                Swal.fire('ลบเรียบร้อย!', '', 'success')
+                fetchCats()
+            }
         }
     }
 

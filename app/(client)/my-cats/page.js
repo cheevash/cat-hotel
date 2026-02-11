@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Swal from 'sweetalert2'
 
 export default function MyCatsPage() {
     const [cats, setCats] = useState([])
@@ -18,6 +19,7 @@ export default function MyCatsPage() {
         image_url: ''
     })
     const router = useRouter()
+    const [uploading, setUploading] = useState(false)
 
     useEffect(() => {
         fetchCats()
@@ -36,6 +38,7 @@ export default function MyCatsPage() {
             .from('cats')
             .select('*')
             .eq('owner_id', user.id)
+            .eq('is_deleted', false)
             .order('created_at', { ascending: false })
 
         if (error) console.error('Error fetching cats:', error)
@@ -69,6 +72,33 @@ export default function MyCatsPage() {
         setShowModal(true)
     }
 
+    const handleImageUpload = async (e) => {
+        try {
+            if (!e.target.files || e.target.files.length === 0) return
+
+            setUploading(true)
+            const file = e.target.files[0]
+            const fileExt = file.name.split('.').pop()
+            const fileName = `${Date.now()}.${fileExt}`
+            const filePath = `${fileName}`
+
+            const { error: uploadError } = await supabase.storage
+                .from('cat-images')
+                .upload(filePath, file)
+
+            if (uploadError) throw uploadError
+
+            const { data } = supabase.storage.from('cat-images').getPublicUrl(filePath)
+
+            setFormData(prev => ({ ...prev, image_url: data.publicUrl }))
+
+        } catch (error) {
+            Swal.fire('Upload Error', error.message, 'error')
+        } finally {
+            setUploading(false)
+        }
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
         const { data: { user } } = await supabase.auth.getUser()
@@ -90,8 +120,14 @@ export default function MyCatsPage() {
                 .update(catData)
                 .eq('id', editingCat.id)
 
-            if (error) alert('เกิดข้อผิดพลาด: ' + error.message)
+            if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
             else {
+                Swal.fire({
+                    title: 'บันทึกสำเร็จ',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                })
                 setShowModal(false)
                 fetchCats()
             }
@@ -100,8 +136,14 @@ export default function MyCatsPage() {
                 .from('cats')
                 .insert([catData])
 
-            if (error) alert('เกิดข้อผิดพลาด: ' + error.message)
+            if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
             else {
+                Swal.fire({
+                    title: 'บันทึกสำเร็จ',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                })
                 setShowModal(false)
                 fetchCats()
             }
@@ -109,10 +151,29 @@ export default function MyCatsPage() {
     }
 
     const handleDelete = async (id, name) => {
-        if (confirm(`ยืนยันว่าจะลบข้อมูลน้องแมว "${name}" ใช่หรือไม่?`)) {
-            const { error } = await supabase.from('cats').delete().eq('id', id)
-            if (error) alert('เกิดข้อผิดพลาด: ' + error.message)
-            else fetchCats()
+        const result = await Swal.fire({
+            title: 'ยืนยันการลบ?',
+            text: `คุณต้องการลบข้อมูลน้องแมว "${name}" ใช่หรือไม่?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'ลบข้อมูล',
+            cancelButtonText: 'ยกเลิก'
+        })
+
+        if (result.isConfirmed) {
+            // Soft delete
+            const { error } = await supabase
+                .from('cats')
+                .update({ is_deleted: true })
+                .eq('id', id)
+
+            if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
+            else {
+                Swal.fire('ลบเรียบร้อย!', '', 'success')
+                fetchCats()
+            }
         }
     }
 
@@ -278,15 +339,34 @@ export default function MyCatsPage() {
                                 />
                             </div>
 
+
                             <div style={styles.formGroup}>
-                                <label style={styles.label}>รูปภาพ (URL)</label>
-                                <input
-                                    type="url"
-                                    value={formData.image_url}
-                                    onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                                    style={styles.input}
-                                    placeholder="https://example.com/photo.jpg"
-                                />
+                                <label style={styles.label}>รูปประจำตัวน้องแมว</label>
+                                <div style={styles.uploadContainer}>
+                                    {formData.image_url && (
+                                        <div style={styles.previewContainer}>
+                                            <img src={formData.image_url} alt="Preview" style={styles.previewImage} />
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, image_url: '' })}
+                                                style={styles.removeImageBtn}
+                                            >✕</button>
+                                        </div>
+                                    )}
+
+                                    {!formData.image_url && (
+                                        <label style={styles.uploadBtn}>
+                                            {uploading ? '⏳ กำลังอัปโหลด...' : '📸 เลือกรูปภาพ'}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleImageUpload}
+                                                style={{ display: 'none' }}
+                                                disabled={uploading}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
                             </div>
 
                             <div style={styles.formActions}>
@@ -403,4 +483,11 @@ const styles = {
     formActions: { display: 'flex', gap: '15px', marginTop: '20px' },
     submitBtn: { flex: 2, padding: '14px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(234, 88, 12, 0.2)' },
     cancelBtn: { flex: 1, padding: '14px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer' },
+
+    // Upload Styles
+    uploadContainer: { marginTop: '10px' },
+    previewContainer: { position: 'relative', width: '100%', height: '200px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb' },
+    previewImage: { width: '100%', height: '100%', objectFit: 'cover' },
+    removeImageBtn: { position: 'absolute', top: '10px', right: '10px', width: '30px', height: '30px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' },
+    uploadBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', backgroundColor: '#f9fafb', border: '2px dashed #d1d5db', borderRadius: '12px', cursor: 'pointer', color: '#6b7280', fontWeight: '600', transition: 'all 0.2s', ':hover': { borderColor: '#ea580c', color: '#ea580c', backgroundColor: '#fff7ed' } },
 }

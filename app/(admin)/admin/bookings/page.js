@@ -1,24 +1,27 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import Swal from 'sweetalert2'
 
 export default function AdminBookings() {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [selectedBooking, setSelectedBooking] = useState(null)
+  const [processing, setProcessing] = useState(false)
 
+  // Configuration
   const statusOptions = [
-    { value: 'Pending', label: '⏳ รอยืนยัน', color: '#f59e0b', bg: '#fef3c7' },
-    { value: 'Confirmed', label: '✅ ยืนยันแล้ว', color: '#10b981', bg: '#dcfce7' },
-    { value: 'CheckedIn', label: '🏠 เช็คอินแล้ว', color: '#3b82f6', bg: '#dbeafe' },
-    { value: 'CheckedOut', label: '🚪 เช็คเอาท์แล้ว', color: '#6b7280', bg: '#f3f4f6' },
-    { value: 'Cancelled', label: '❌ ยกเลิก', color: '#ef4444', bg: '#fee2e2' },
+    { value: 'Pending', label: '⏳ รอยืนยัน', color: '#f59e0b', bg: '#fef3c7', icon: '⏳' },
+    { value: 'Confirmed', label: '✅ ยืนยันแล้ว', color: '#10b981', bg: '#dcfce7', icon: '✅' },
+    { value: 'CheckedIn', label: '🏠 เช็คอินแล้ว', color: '#3b82f6', bg: '#dbeafe', icon: '🏠' },
+    { value: 'CheckedOut', label: '🚪 เช็คเอาท์แล้ว', color: '#6b7280', bg: '#f3f4f6', icon: '🚪' },
+    { value: 'Cancelled', label: '❌ ยกเลิก', color: '#ef4444', bg: '#fee2e2', icon: '❌' },
   ]
 
   const paymentOptions = [
     { value: 'Unpaid', label: '💳 ยังไม่ชำระ', color: '#ef4444', bg: '#fee2e2' },
-    { value: 'PendingApproval', label: '⏳ รอตรวจสอบ', color: '#f59e0b', bg: '#fef3c7' },
+    { value: 'PendingApproval', label: '⏳ รอตรวจสอบ', color: '#f59e0b', bg: '#fffbeb' }, // Updated bg for visibility
     { value: 'Paid', label: '✅ ชำระแล้ว', color: '#10b981', bg: '#dcfce7' },
   ]
 
@@ -40,14 +43,18 @@ export default function AdminBookings() {
 
     if (error) {
       console.error('Error fetching bookings:', error)
-      // Try simpler query if the join fails
+      // Fallback: Try simpler query if joins fail
       const { data: simpleData, error: simpleError } = await supabase
         .from('bookings')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (simpleError) console.error(simpleError)
-      else setBookings(simpleData || [])
+      if (simpleError) {
+        console.error('Error fetching simple bookings:', simpleError)
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลการจองได้', 'error')
+      } else {
+        setBookings(simpleData || [])
+      }
     } else {
       setBookings(data || [])
     }
@@ -55,336 +62,231 @@ export default function AdminBookings() {
   }
 
   const updateStatus = async (bookingId, newStatus) => {
+    setProcessing(true)
     const { error } = await supabase
       .from('bookings')
       .update({ status: newStatus })
       .eq('id', bookingId)
 
     if (error) {
-      alert('เกิดข้อผิดพลาด: ' + error.message)
+      Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
     } else {
-      fetchBookings()
-      setSelectedBooking(null)
+      await fetchBookings()
+      // Update selected booking in place if modal is open
+      if (selectedBooking && selectedBooking.id === bookingId) {
+        setSelectedBooking(prev => ({ ...prev, status: newStatus }))
+      }
     }
+    setProcessing(false)
   }
 
   const updatePaymentStatus = async (bookingId, newStatus) => {
+    setProcessing(true)
     const { error } = await supabase
       .from('bookings')
       .update({ payment_status: newStatus })
       .eq('id', bookingId)
 
     if (error) {
-      alert('เกิดข้อผิดพลาด: ' + error.message)
+      Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
     } else {
-      fetchBookings()
+      await fetchBookings()
+      if (selectedBooking && selectedBooking.id === bookingId) {
+        setSelectedBooking(prev => ({ ...prev, payment_status: newStatus }))
+      }
     }
+    setProcessing(false)
   }
 
+
+
   const approvePayment = async (bookingId) => {
+    const result = await Swal.fire({
+      title: 'ยืนยันอนุมัติ?',
+      text: "คุณต้องการอนุมัติการชำระเงินนี้ใช่หรือไม่",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'อนุมัติ',
+      cancelButtonText: 'ยกเลิก'
+    })
+
+    if (!result.isConfirmed) return
+
+    setProcessing(true)
     const { error } = await supabase
       .from('bookings')
       .update({ payment_status: 'Paid', status: 'Confirmed' })
       .eq('id', bookingId)
 
     if (error) {
-      alert('เกิดข้อผิดพลาด: ' + error.message)
+      Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
     } else {
-      alert('อนุมัติการชำระเงินเรียบร้อย ✅')
-      fetchBookings()
+      Swal.fire({
+        title: 'อนุมัติเรียบร้อย',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+      })
+      await fetchBookings()
       setSelectedBooking(null)
     }
+    setProcessing(false)
   }
 
   const rejectPayment = async (bookingId) => {
-    if (!confirm('ยืนยันปฏิเสธการชำระเงินนี้?')) return
+    const result = await Swal.fire({
+      title: 'ยืนยันปฏิเสธ?',
+      text: "ลูกค้าจะต้องส่งหลักฐานการโอนเงินใหม่",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'ปฏิเสธยอด',
+      cancelButtonText: 'ยกเลิก'
+    })
+
+    if (!result.isConfirmed) return
+
+    setProcessing(true)
     const { error } = await supabase
       .from('bookings')
-      .update({ payment_status: 'Unpaid', status: 'Pending' })
+      .update({ payment_status: 'Unpaid', status: 'Pending' }) // Revert to Unpaid/Pending
       .eq('id', bookingId)
 
     if (error) {
-      alert('เกิดข้อผิดพลาด: ' + error.message)
+      Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
     } else {
-      alert('ปฏิเสธการชำระเงินแล้ว')
-      fetchBookings()
+      Swal.fire({
+        title: 'ปฏิเสธเรียบร้อย',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+      })
+      await fetchBookings()
       setSelectedBooking(null)
     }
+    setProcessing(false)
   }
 
-  const getStatusInfo = (status) => {
-    return statusOptions.find(s => s.value === status) || statusOptions[0]
-  }
-
-  const getPaymentInfo = (status) => {
-    return paymentOptions.find(s => s.value === status) || paymentOptions[0]
-  }
-
-  const filteredBookings = filter === 'all'
-    ? bookings
-    : bookings.filter(b => b.status === filter)
-
+  // Helper functions
+  const getStatusInfo = (status) => statusOptions.find(s => s.value === status) || statusOptions[0]
+  const getPaymentInfo = (status) => paymentOptions.find(s => s.value === status) || paymentOptions[0]
   const formatDate = (dateStr) => {
     if (!dateStr) return '-'
     return new Date(dateStr).toLocaleDateString('th-TH', {
       day: 'numeric', month: 'short', year: 'numeric'
     })
   }
-
-  const calculateNights = (checkIn, checkOut) => {
-    if (!checkIn || !checkOut) return 1
-    const diff = new Date(checkOut) - new Date(checkIn)
-    const nights = Math.ceil(diff / (1000 * 60 * 60 * 24))
-    return nights < 1 ? 1 : nights
-  }
-
   const getRoomName = (booking) => {
     if (booking.rooms?.name) return booking.rooms.name
     if (booking.rooms?.room_type) return booking.rooms.room_type
     return `ห้อง ${booking.room_id?.slice(0, 8) || '-'}`
   }
 
-  const handlePrint = (booking) => {
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>ใบจอง - ${getRoomName(booking)}</title>
-        <style>
-          body { font-family: 'Sarabun', sans-serif; padding: 40px; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ea580c; padding-bottom: 20px; }
-          .header h1 { color: #ea580c; margin: 0; }
-          .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-          .label { color: #666; }
-          .value { font-weight: bold; }
-          .total { font-size: 1.5em; color: #ea580c; margin-top: 20px; text-align: right; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>🐱 Cat Hotel</h1>
-          <p>ใบยืนยันการจอง</p>
-        </div>
-        <div class="info-row"><span class="label">เลขที่จอง:</span><span class="value">${booking.id?.slice(0, 8).toUpperCase()}</span></div>
-        <div class="info-row"><span class="label">ลูกค้า:</span><span class="value">${booking.profiles?.first_name || '-'} ${booking.profiles?.last_name || ''}</span></div>
-        <div class="info-row"><span class="label">แมว:</span><span class="value">${booking.cats?.name || '-'}</span></div>
-        <div class="info-row"><span class="label">ห้อง:</span><span class="value">${getRoomName(booking)}</span></div>
-        <div class="info-row"><span class="label">วันเช็คอิน:</span><span class="value">${formatDate(booking.check_in_date)}</span></div>
-        <div class="info-row"><span class="label">วันเช็คเอาท์:</span><span class="value">${formatDate(booking.check_out_date)}</span></div>
-        <div class="info-row"><span class="label">สถานะ:</span><span class="value">${getStatusInfo(booking.status).label}</span></div>
-        <div class="info-row"><span class="label">การชำระเงิน:</span><span class="value">${getPaymentInfo(booking.payment_status).label}</span></div>
-        <div class="total">ยอดรวม: ${Number(booking.total_price || 0).toLocaleString()} บาท</div>
-      </body>
-      </html>
-    `
-    const printWindow = window.open('', '_blank')
-    printWindow.document.write(printContent)
-    printWindow.document.close()
-    printWindow.print()
+  // Filtering
+  const filteredBookings = filter === 'all'
+    ? bookings
+    : bookings.filter(b => b.status === filter)
+
+  // Stats calculation
+  const stats = {
+    total: bookings.length,
+    pending: bookings.filter(b => b.status === 'Pending').length,
+    confirmed: bookings.filter(b => b.status === 'Confirmed').length,
+    checkedIn: bookings.filter(b => b.status === 'CheckedIn').length,
+    pendingPayment: bookings.filter(b => b.payment_status === 'PendingApproval').length
   }
 
-  if (loading) {
+  // Modal Component (Inline for simplicity)
+  const BookingModal = ({ booking, onClose }) => {
+    if (!booking) return null
+
+    // Refresh local booking data from state to ensure it's up to date
+    const currentBooking = bookings.find(b => b.id === booking.id) || booking
+
+    const statusInfo = getStatusInfo(currentBooking.status)
+    const paymentInfo = getPaymentInfo(currentBooking.payment_status)
+
     return (
-      <div style={styles.loadingPage}>
-        <span style={styles.loadingIcon}>📅</span>
-        <p>กำลังโหลดข้อมูลการจอง...</p>
-      </div>
-    )
-  }
-
-  return (
-    <div style={styles.page}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>📅 จัดการการจอง</h1>
-          <p style={styles.subtitle}>ดูและจัดการรายการจองทั้งหมด ({bookings.length} รายการ)</p>
-        </div>
-        <button onClick={fetchBookings} style={styles.refreshBtn}>🔄 รีเฟรช</button>
-      </div>
-
-      {/* Stats */}
-      <div style={styles.statsRow}>
-        {statusOptions.map(status => {
-          const count = bookings.filter(b => b.status === status.value).length
-          return (
-            <div
-              key={status.value}
-              style={{ ...styles.statCard, borderLeft: `4px solid ${status.color}` }}
-              onClick={() => setFilter(status.value)}
-            >
-              <span style={{ ...styles.statNumber, color: status.color }}>{count}</span>
-              <span style={styles.statLabel}>{status.label}</span>
+      <div style={styles.modalOverlay} onClick={onClose}>
+        <div style={styles.modal} onClick={e => e.stopPropagation()}>
+          {/* Modal Header */}
+          <div style={styles.modalHeader}>
+            <div>
+              <span style={styles.modalId}>#{currentBooking.id.slice(0, 8).toUpperCase()}</span>
+              <h2 style={styles.modalTitle}>รายละเอียดการจอง</h2>
             </div>
-          )
-        })}
-      </div>
+            <button onClick={onClose} style={styles.closeBtn}>✕</button>
+          </div>
 
-      {/* Payment Stats */}
-      <div style={styles.paymentStats}>
-        <div style={styles.paymentStatItem}>
-          <span style={{ color: '#10b981', fontWeight: 'bold' }}>✅ ชำระแล้ว:</span>
-          <span>{bookings.filter(b => b.payment_status === 'Paid').length} รายการ</span>
-        </div>
-        <div style={styles.paymentStatItem}>
-          <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>⏳ รอตรวจสอบ:</span>
-          <span>{bookings.filter(b => b.payment_status === 'PendingApproval').length} รายการ</span>
-        </div>
-        <div style={styles.paymentStatItem}>
-          <span style={{ color: '#ef4444', fontWeight: 'bold' }}>💳 รอชำระ:</span>
-          <span>{bookings.filter(b => b.payment_status === 'Unpaid').length} รายการ</span>
-        </div>
-      </div>
+          <div style={styles.modalContent}>
 
-      {/* Filter */}
-      <div style={styles.filterRow}>
-        <button
-          onClick={() => setFilter('all')}
-          style={filter === 'all' ? styles.filterBtnActive : styles.filterBtn}
-        >ทั้งหมด ({bookings.length})</button>
-        {statusOptions.map(s => (
-          <button
-            key={s.value}
-            onClick={() => setFilter(s.value)}
-            style={filter === s.value ? styles.filterBtnActive : styles.filterBtn}
-          >{s.label.split(' ')[0]}</button>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div style={styles.tableCard}>
-        <div style={styles.tableWrapper}>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.thRow}>
-                <th style={styles.th}>เลขที่จอง</th>
-                <th style={styles.th}>ลูกค้า / แมว</th>
-                <th style={styles.th}>ห้อง</th>
-                <th style={styles.th}>วันเข้าพัก</th>
-                <th style={styles.th}>ยอดรวม</th>
-                <th style={styles.th}>สถานะ</th>
-                <th style={styles.th}>การชำระ</th>
-                <th style={{ ...styles.th, textAlign: 'center' }}>จัดการ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBookings.map(booking => {
-                const statusInfo = getStatusInfo(booking.status)
-                const paymentInfo = getPaymentInfo(booking.payment_status)
-                return (
-                  <tr key={booking.id} style={styles.tr}>
-                    <td style={styles.td}>
-                      <code style={styles.bookingId}>{booking.id?.slice(0, 8).toUpperCase()}</code>
-                    </td>
-                    <td style={styles.td}>
-                      <strong>{booking.profiles?.first_name || '-'} {booking.profiles?.last_name || ''}</strong>
-                      <br />
-                      <small style={styles.subText}>🐱 {booking.cats?.name || '-'}</small>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={styles.roomBadge}>{getRoomName(booking)}</span>
-                    </td>
-                    <td style={styles.td}>
-                      {formatDate(booking.check_in_date)}
-                      <br />
-                      <small style={styles.subText}>→ {formatDate(booking.check_out_date)}</small>
-                    </td>
-                    <td style={styles.td}>
-                      <strong style={styles.price}>{Number(booking.total_price || 0).toLocaleString()} ฿</strong>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.statusBadge,
-                        backgroundColor: statusInfo.bg,
-                        color: statusInfo.color
-                      }}>
-                        {statusInfo.label}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <span
-                        onClick={() => updatePaymentStatus(booking.id, booking.payment_status === 'Paid' ? 'Unpaid' : 'Paid')}
-                        style={{
-                          ...styles.paymentBadge,
-                          backgroundColor: paymentInfo.bg,
-                          color: paymentInfo.color,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {paymentInfo.label}
-                      </span>
-                    </td>
-                    <td style={{ ...styles.td, textAlign: 'center' }}>
-                      <div style={styles.actions}>
-                        <button
-                          onClick={() => setSelectedBooking(booking)}
-                          style={styles.actionBtn}
-                          title="เปลี่ยนสถานะ"
-                        >📝</button>
-                        <button
-                          onClick={() => handlePrint(booking)}
-                          style={styles.actionBtn}
-                          title="พิมพ์ใบจอง"
-                        >🖨️</button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-              {filteredBookings.length === 0 && (
-                <tr>
-                  <td colSpan="8" style={styles.emptyCell}>
-                    ไม่พบรายการจอง
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal for status change */}
-      {selectedBooking && (
-        <div style={styles.modalOverlay} onClick={() => setSelectedBooking(null)}>
-          <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h2 style={styles.modalTitle}>📝 จัดการการจอง</h2>
-              <button onClick={() => setSelectedBooking(null)} style={styles.closeBtn}>✕</button>
+            {/* Main Grid Info */}
+            <div style={styles.infoGrid}>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>👤 ลูกค้า</span>
+                <span style={styles.infoValue}>{currentBooking.profiles?.first_name} {currentBooking.profiles?.last_name}</span>
+                <span style={styles.infoSub}>{currentBooking.profiles?.phone || '-'}</span>
+              </div>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>🐱 น้องแมว</span>
+                <span style={styles.infoValue}>{currentBooking.cats?.name || '-'}</span>
+                <span style={styles.infoSub}>{currentBooking.cats?.breed}</span>
+              </div>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>🏠 ห้องพัก</span>
+                <span style={styles.infoValue}>{getRoomName(currentBooking)}</span>
+              </div>
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>📅 วันที่เข้าพัก</span>
+                <span style={styles.infoValue}>{formatDate(currentBooking.check_in_date)}</span>
+                <span style={styles.infoSub}>ถึง {formatDate(currentBooking.check_out_date)}</span>
+              </div>
             </div>
 
-            <div style={styles.modalBody}>
-              <div style={styles.bookingDetail}>
-                <p><strong>เลขที่:</strong> {selectedBooking.id?.slice(0, 8).toUpperCase()}</p>
-                <p><strong>ลูกค้า:</strong> {selectedBooking.profiles?.first_name || '-'} {selectedBooking.profiles?.last_name || ''}</p>
-                <p><strong>แมว:</strong> {selectedBooking.cats?.name || '-'} ({selectedBooking.cats?.breed || '-'})</p>
-                <p><strong>ห้อง:</strong> {getRoomName(selectedBooking)}</p>
-                <p><strong>วันเข้าพัก:</strong> {formatDate(selectedBooking.check_in_date)} → {formatDate(selectedBooking.check_out_date)}</p>
-                <p><strong>ยอดรวม:</strong> <span style={styles.price}>{Number(selectedBooking.total_price || 0).toLocaleString()} บาท</span></p>
-                <p><strong>การชำระเงิน:</strong> {getPaymentInfo(selectedBooking.payment_status).label}</p>
+            <div style={styles.divider}></div>
+
+            {/* Payment Section - Highlighted */}
+            <div style={{
+              ...styles.paymentSection,
+              backgroundColor: currentBooking.payment_status === 'PendingApproval' ? '#fff7ed' : '#f8fafc',
+              border: currentBooking.payment_status === 'PendingApproval' ? '1px solid #fdba74' : '1px solid #e2e8f0'
+            }}>
+              <div style={styles.paymentHeader}>
+                <h3 style={styles.sectionTitle}>สถานะการชำระเงิน</h3>
+                <span style={{ ...styles.badge, backgroundColor: paymentInfo.bg, color: paymentInfo.color }}>
+                  {paymentInfo.label}
+                </span>
               </div>
 
-              {/* Payment Slip Viewer */}
-              {selectedBooking.payment_slip_url && (
-                <div style={styles.slipSection}>
-                  <h4 style={styles.slipTitle}>🧾 หลักฐานการโอนเงิน</h4>
-                  <div style={styles.slipImageWrapper}>
-                    <img
-                      src={selectedBooking.payment_slip_url}
-                      alt="สลิปการโอนเงิน"
-                      style={styles.slipImage}
-                      onClick={() => window.open(selectedBooking.payment_slip_url, '_blank')}
-                    />
-                  </div>
-                  {selectedBooking.payment_status === 'PendingApproval' && (
-                    <div style={styles.approvalButtons}>
+              <div style={styles.priceRow}>
+                <span>ยอดสุทธิ</span>
+                <span style={styles.totalPrice}>{Number(currentBooking.total_price).toLocaleString()} ฿</span>
+              </div>
+
+              {/* Slip Preview & Action */}
+              {currentBooking.payment_slip_url ? (
+                <div style={styles.slipContainer}>
+                  <p style={styles.slipLabel}>หลักฐานการโอนเงิน:</p>
+                  <a href={currentBooking.payment_slip_url} target="_blank" rel="noreferrer" style={styles.slipLink}>
+                    <img src={currentBooking.payment_slip_url} alt="Payment Slip" style={styles.slipImage} />
+                  </a>
+
+                  {/* Approval Actions */}
+                  {currentBooking.payment_status === 'PendingApproval' && (
+                    <div style={styles.actionButtons}>
                       <button
-                        onClick={() => approvePayment(selectedBooking.id)}
+                        onClick={() => approvePayment(currentBooking.id)}
+                        disabled={processing}
                         style={styles.approveBtn}
                       >
                         ✅ อนุมัติการชำระเงิน
                       </button>
                       <button
-                        onClick={() => rejectPayment(selectedBooking.id)}
+                        onClick={() => rejectPayment(currentBooking.id)}
+                        disabled={processing}
                         style={styles.rejectBtn}
                       >
                         ❌ ปฏิเสธ
@@ -392,92 +294,436 @@ export default function AdminBookings() {
                     </div>
                   )}
                 </div>
+              ) : (
+                <div style={styles.noSlip}>
+                  <span>ยังไม่มีหลักฐานการโอนเงิน</span>
+                </div>
               )}
+            </div>
 
-              <h4 style={styles.changeStatusTitle}>เปลี่ยนสถานะการจอง:</h4>
-              <div style={styles.statusButtons}>
-                {statusOptions.map(status => (
+            {/* Booking Status Management */}
+            <div style={styles.statusManagement}>
+              <h3 style={styles.sectionTitle}>จัดการสถานะการจอง</h3>
+              <div style={styles.statusGrid}>
+                {statusOptions.map(option => (
                   <button
-                    key={status.value}
-                    onClick={() => updateStatus(selectedBooking.id, status.value)}
+                    key={option.value}
+                    onClick={() => updateStatus(currentBooking.id, option.value)}
+                    disabled={processing || currentBooking.status === option.value}
                     style={{
-                      ...styles.statusBtn,
-                      backgroundColor: selectedBooking.status === status.value ? status.color : status.bg,
-                      color: selectedBooking.status === status.value ? 'white' : status.color,
-                      border: `2px solid ${status.color}`
+                      ...styles.statusOptionBtn,
+                      backgroundColor: currentBooking.status === option.value ? option.color : 'white',
+                      color: currentBooking.status === option.value ? 'white' : '#64748b',
+                      borderColor: currentBooking.status === option.value ? option.color : '#e2e8f0'
                     }}
                   >
-                    {status.label}
+                    {option.icon} {option.label}
                   </button>
                 ))}
               </div>
             </div>
+
           </div>
         </div>
-      )}
+      </div>
+    )
+  }
+
+  if (loading) return <div style={styles.loading}>กำลังโหลด...</div>
+
+  return (
+    <div style={styles.container}>
+      {/* Page Header */}
+      <header style={styles.header}>
+        <div>
+          <h1 style={styles.pageTitle}>จัดการการจองห้องพัก</h1>
+          <p style={styles.pageSubtitle}>ตรวจสอบรายการจองและสถานะการชำระเงิน</p>
+        </div>
+        <button onClick={fetchBookings} style={styles.refreshBtn}>🔄 รีเฟรชข้อมูล</button>
+      </header>
+
+      {/* Stats Cards */}
+      <div style={styles.statsContainer}>
+        <div style={{ ...styles.statCard, borderBottom: '4px solid #f59e0b' }}>
+          <span style={styles.statLabel}>รอดำเนินการ</span>
+          <span style={{ ...styles.statValue, color: '#f59e0b' }}>{stats.pending}</span>
+        </div>
+        <div style={{ ...styles.statCard, borderBottom: '4px solid #10b981' }}>
+          <span style={styles.statLabel}>ยืนยันแล้ว</span>
+          <span style={{ ...styles.statValue, color: '#10b981' }}>{stats.confirmed}</span>
+        </div>
+        <div style={{ ...styles.statCard, borderBottom: '4px solid #3b82f6' }}>
+          <span style={styles.statLabel}>เช็คอินแล้ว</span>
+          <span style={{ ...styles.statValue, color: '#3b82f6' }}>{stats.checkedIn}</span>
+        </div>
+        {stats.pendingPayment > 0 && (
+          <div style={{ ...styles.statCard, backgroundColor: '#fff7ed', borderBottom: '4px solid #ea580c' }}>
+            <span style={styles.statLabel}>⚠️ รอตรวจสอบการโอน</span>
+            <span style={{ ...styles.statValue, color: '#ea580c' }}>{stats.pendingPayment}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div style={styles.filterContainer}>
+        <button
+          onClick={() => setFilter('all')}
+          style={filter === 'all' ? styles.filterBtnActive : styles.filterBtn}
+        >
+          ทั้งหมด
+        </button>
+        {statusOptions.map(option => (
+          <button
+            key={option.value}
+            onClick={() => setFilter(option.value)}
+            style={filter === option.value ? styles.filterBtnActive : styles.filterBtn}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Bookings Table */}
+      <div style={styles.tableCard}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.th}>เลขที่จอง</th>
+              <th style={styles.th}>ลูกค้า</th>
+              <th style={styles.th}>ห้องพัก</th>
+              <th style={styles.th}>วันที่</th>
+              <th style={styles.th}>สถานะ</th>
+              <th style={styles.th}>การชำระเงิน</th>
+              <th style={styles.th}>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredBookings.map(booking => {
+              const status = getStatusInfo(booking.status)
+              const payment = getPaymentInfo(booking.payment_status)
+              return (
+                <tr key={booking.id} style={styles.tr}>
+                  <td style={styles.td}>
+                    <span style={styles.idBadge}>#{booking.id.slice(0, 6).toUpperCase()}</span>
+                  </td>
+                  <td style={styles.td}>
+                    <div style={styles.customerName}>{booking.profiles?.first_name} {booking.profiles?.last_name}</div>
+                    <div style={styles.catName}>🐱 {booking.cats?.name}</div>
+                  </td>
+                  <td style={styles.td}>{getRoomName(booking)}</td>
+                  <td style={styles.td}>
+                    <div>{formatDate(booking.check_in_date)}</div>
+                    <div style={styles.dateSub}>ถึง {formatDate(booking.check_out_date)}</div>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={{ ...styles.badge, backgroundColor: status.bg, color: status.color }}>
+                      {status.label}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    <span style={{ ...styles.badge, backgroundColor: payment.bg, color: payment.color }}>
+                      {payment.label}
+                    </span>
+                  </td>
+                  <td style={styles.td}>
+                    <button onClick={() => setSelectedBooking(booking)} style={styles.viewBtn}>
+                      ดูรายละเอียด
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+            {filteredBookings.length === 0 && (
+              <tr>
+                <td colSpan="7" style={styles.emptyState}>ไม่พบข้อมูลการจอง</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal */}
+      {selectedBooking && <BookingModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} />}
     </div>
   )
 }
 
+// Styles object
 const styles = {
-  page: { padding: '30px', maxWidth: '1400px', margin: '0 auto', fontFamily: "'Sarabun', 'Kanit', sans-serif", backgroundColor: '#f8fafc', minHeight: '100vh' },
-  loadingPage: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px', color: '#ea580c' },
-  loadingIcon: { fontSize: '3rem' },
-
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' },
-  title: { fontSize: '2rem', color: '#1e293b', margin: '0 0 5px', fontWeight: '700' },
-  subtitle: { color: '#64748b', margin: 0 },
-  refreshBtn: { padding: '10px 20px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', cursor: 'pointer', fontWeight: '600' },
+  loading: { padding: '50px', textAlign: 'center', color: '#64748b' },
+  container: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '40px 20px',
+    fontFamily: "'Inter', sans-serif",
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '30px',
+  },
+  pageTitle: { fontSize: '24px', fontWeight: 'bold', color: '#1e293b', margin: 0 },
+  pageSubtitle: { fontSize: '14px', color: '#64748b', marginTop: '5px' },
+  refreshBtn: {
+    padding: '10px 20px',
+    backgroundColor: 'white',
+    border: '1px solid #e2e8f0',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    color: '#475569',
+    fontWeight: '500',
+    transition: 'all 0.2s',
+  },
 
   // Stats
-  statsRow: { display: 'flex', gap: '15px', marginBottom: '15px', flexWrap: 'wrap' },
-  statCard: { backgroundColor: '#fff', padding: '15px 20px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', cursor: 'pointer', minWidth: '100px' },
-  statNumber: { fontSize: '1.5rem', fontWeight: '800', display: 'block' },
-  statLabel: { color: '#64748b', fontSize: '0.8rem' },
-  paymentStats: { display: 'flex', gap: '25px', marginBottom: '20px', backgroundColor: '#fff', padding: '15px 25px', borderRadius: '12px' },
-  paymentStatItem: { display: 'flex', gap: '10px', alignItems: 'center', fontSize: '0.95rem' },
+  statsContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+    gap: '20px',
+    marginBottom: '30px',
+  },
+  statCard: {
+    backgroundColor: 'white',
+    padding: '20px',
+    borderRadius: '12px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
+  },
+  statLabel: { fontSize: '14px', color: '#64748b', fontWeight: '500' },
+  statValue: { fontSize: '28px', fontWeight: 'bold' },
 
-  // Filter
-  filterRow: { display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' },
-  filterBtn: { padding: '8px 16px', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem' },
-  filterBtnActive: { padding: '8px 16px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' },
+  // Filters
+  filterContainer: {
+    display: 'flex',
+    gap: '10px',
+    marginBottom: '20px',
+    flexWrap: 'wrap',
+  },
+  filterBtn: {
+    padding: '8px 16px',
+    borderRadius: '20px',
+    border: '1px solid #e2e8f0',
+    backgroundColor: 'white',
+    color: '#64748b',
+    cursor: 'pointer',
+    fontSize: '14px',
+  },
+  filterBtnActive: {
+    padding: '8px 16px',
+    borderRadius: '20px',
+    border: '1px solid #ea580c',
+    backgroundColor: '#ea580c',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '500',
+  },
 
   // Table
-  tableCard: { backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden' },
-  tableWrapper: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', minWidth: '1000px' },
-  thRow: { backgroundColor: '#f8fafc' },
-  th: { padding: '15px', textAlign: 'left', color: '#64748b', fontSize: '0.85rem', fontWeight: '600', borderBottom: '1px solid #e2e8f0' },
-  tr: { borderBottom: '1px solid #f1f5f9' },
-  td: { padding: '15px', color: '#334155', fontSize: '0.9rem', verticalAlign: 'top' },
-  bookingId: { backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' },
-  subText: { color: '#94a3b8', fontSize: '0.8rem' },
-  roomBadge: { backgroundColor: '#fff7ed', color: '#ea580c', padding: '3px 10px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' },
-  price: { color: '#ea580c', fontSize: '1rem' },
-  statusBadge: { padding: '5px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600', display: 'inline-block' },
-  paymentBadge: { padding: '5px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600', display: 'inline-block' },
-  actions: { display: 'flex', gap: '8px', justifyContent: 'center' },
-  actionBtn: { width: '35px', height: '35px', border: 'none', borderRadius: '8px', backgroundColor: '#f1f5f9', cursor: 'pointer', fontSize: '1rem' },
-  emptyCell: { padding: '50px', textAlign: 'center', color: '#94a3b8' },
+  tableCard: {
+    backgroundColor: 'white',
+    borderRadius: '16px',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+    overflow: 'hidden',
+    overflowX: 'auto',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    minWidth: '900px',
+  },
+  th: {
+    textAlign: 'left',
+    padding: '16px 24px',
+    borderBottom: '1px solid #e2e8f0',
+    color: '#64748b',
+    fontSize: '13px',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  tr: {
+    borderBottom: '1px solid #f1f5f9',
+    transition: 'background-color 0.2s',
+  },
+  td: {
+    padding: '16px 24px',
+    fontSize: '14px',
+    color: '#334155',
+  },
+  idBadge: {
+    fontFamily: 'monospace',
+    backgroundColor: '#f1f5f9',
+    padding: '4px 8px',
+    borderRadius: '6px',
+    fontSize: '12px',
+    color: '#475569',
+  },
+  customerName: { fontWeight: '600', color: '#1e293b' },
+  catName: { fontSize: '13px', color: '#64748b', marginTop: '2px' },
+  dateSub: { fontSize: '12px', color: '#94a3b8' },
+  badge: {
+    padding: '4px 10px',
+    borderRadius: '12px',
+    fontSize: '12px',
+    fontWeight: '600',
+    display: 'inline-block',
+  },
+  viewBtn: {
+    padding: '6px 12px',
+    backgroundColor: '#f8fafc',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px',
+    color: '#475569',
+    fontSize: '13px',
+    cursor: 'pointer',
+    fontWeight: '500',
+    transition: 'all 0.2s',
+  },
+  emptyState: { padding: '40px', textAlign: 'center', color: '#94a3b8' },
 
   // Modal
-  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
-  modal: { backgroundColor: '#fff', borderRadius: '20px', width: '100%', maxWidth: '500px' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 25px', borderBottom: '1px solid #f1f5f9' },
-  modalTitle: { fontSize: '1.3rem', fontWeight: '700', color: '#1e293b', margin: 0 },
-  closeBtn: { width: '35px', height: '35px', border: 'none', borderRadius: '50%', backgroundColor: '#f1f5f9', cursor: 'pointer', fontSize: '1rem' },
-  modalBody: { padding: '25px' },
-  bookingDetail: { backgroundColor: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px' },
-  changeStatusTitle: { marginBottom: '15px', color: '#374151' },
-  statusButtons: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  statusBtn: { padding: '12px 20px', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', transition: 'all 0.2s' },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    backdropFilter: 'blur(4px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '20px',
+  },
+  modal: {
+    backgroundColor: 'white',
+    borderRadius: '20px',
+    width: '100%',
+    maxWidth: '600px',
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+  },
+  modalHeader: {
+    padding: '24px',
+    borderBottom: '1px solid #e2e8f0',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'start',
+  },
+  modalTitle: { fontSize: '18px', fontWeight: '700', margin: '5px 0 0 0', color: '#1e293b' },
+  modalId: { fontSize: '13px', color: '#64748b', fontWeight: '500' },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '20px',
+    cursor: 'pointer',
+    color: '#94a3b8',
+    padding: '5px',
+  },
+  modalContent: {
+    padding: '24px',
+    overflowY: 'auto',
+  },
+  infoGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '20px',
+  },
+  infoItem: { display: 'flex', flexDirection: 'column', gap: '2px' },
+  infoLabel: { fontSize: '12px', color: '#64748b', textTransform: 'uppercase' },
+  infoValue: { fontSize: '15px', fontWeight: '600', color: '#1e293b' },
+  infoSub: { fontSize: '13px', color: '#94a3b8' },
 
-  // Payment Slip
-  slipSection: { marginBottom: '20px', padding: '20px', backgroundColor: '#fffbeb', borderRadius: '12px', border: '1px solid #fde68a' },
-  slipTitle: { fontSize: '1rem', color: '#b45309', margin: '0 0 15px', fontWeight: '700' },
-  slipImageWrapper: { textAlign: 'center', marginBottom: '15px' },
-  slipImage: { maxWidth: '100%', maxHeight: '300px', borderRadius: '12px', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', objectFit: 'contain' },
-  approvalButtons: { display: 'flex', gap: '10px' },
-  approveBtn: { flex: 1, padding: '12px', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '0.95rem' },
-  rejectBtn: { flex: 1, padding: '12px', backgroundColor: '#fee2e2', color: '#dc2626', border: '2px solid #fecaca', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '0.95rem' },
+  divider: { height: '1px', backgroundColor: '#e2e8f0', margin: '24px 0' },
+
+  paymentSection: {
+    padding: '20px',
+    borderRadius: '12px',
+    marginBottom: '24px',
+  },
+  paymentHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '15px',
+  },
+  sectionTitle: { fontSize: '15px', fontWeight: '700', color: '#1e293b', margin: 0 },
+  priceRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '20px',
+    paddingBottom: '15px',
+    borderBottom: '1px dashed #cbd5e1',
+  },
+  totalPrice: { fontSize: '18px', fontWeight: '800', color: '#ea580c' },
+
+  slipContainer: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  slipLabel: { fontSize: '14px', fontWeight: '500', color: '#475569', margin: 0 },
+  slipLink: { display: 'block', textAlign: 'center', backgroundColor: 'white', padding: '10px', borderRadius: '8px' },
+  slipImage: {
+    maxWidth: '100%',
+    maxHeight: '250px',
+    objectFit: 'contain',
+    borderRadius: '4px',
+    cursor: 'pointer',
+  },
+  actionButtons: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+    marginTop: '10px',
+  },
+  approveBtn: {
+    padding: '12px',
+    backgroundColor: '#10b981',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
+  },
+  rejectBtn: {
+    padding: '12px',
+    backgroundColor: 'white',
+    color: '#ef4444',
+    border: '1px solid #ef4444',
+    borderRadius: '8px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  noSlip: {
+    textAlign: 'center',
+    padding: '20px',
+    backgroundColor: '#f1f5f9',
+    borderRadius: '8px',
+    color: '#94a3b8',
+    fontSize: '14px',
+  },
+
+  statusManagement: {},
+  statusGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '10px',
+    marginTop: '15px',
+  },
+  statusOptionBtn: {
+    padding: '10px',
+    borderRadius: '8px',
+    border: '1px solid',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: '500',
+    textAlign: 'center',
+    transition: 'all 0.1s',
+  },
 }
