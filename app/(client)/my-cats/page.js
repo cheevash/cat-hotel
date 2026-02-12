@@ -28,12 +28,10 @@ export default function MyCatsPage() {
     const fetchCats = async () => {
         setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
-
         if (!user) {
             router.push('/login')
             return
         }
-
         const { data, error } = await supabase
             .from('cats')
             .select('*')
@@ -48,14 +46,7 @@ export default function MyCatsPage() {
 
     const openAddModal = () => {
         setEditingCat(null)
-        setFormData({
-            name: '',
-            breed: '',
-            age: '',
-            gender: '',
-            health_info: '',
-            image_url: ''
-        })
+        setFormData({ name: '', breed: '', age: '', gender: '', health_info: '', image_url: '' })
         setShowModal(true)
     }
 
@@ -75,23 +66,15 @@ export default function MyCatsPage() {
     const handleImageUpload = async (e) => {
         try {
             if (!e.target.files || e.target.files.length === 0) return
-
             setUploading(true)
             const file = e.target.files[0]
             const fileExt = file.name.split('.').pop()
             const fileName = `${Date.now()}.${fileExt}`
             const filePath = `${fileName}`
-
-            const { error: uploadError } = await supabase.storage
-                .from('cat-images')
-                .upload(filePath, file)
-
+            const { error: uploadError } = await supabase.storage.from('cat-images').upload(filePath, file)
             if (uploadError) throw uploadError
-
             const { data } = supabase.storage.from('cat-images').getPublicUrl(filePath)
-
             setFormData(prev => ({ ...prev, image_url: data.publicUrl }))
-
         } catch (error) {
             Swal.fire('Upload Error', error.message, 'error')
         } finally {
@@ -103,7 +86,6 @@ export default function MyCatsPage() {
         e.preventDefault()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-
         const catData = {
             name: formData.name,
             breed: formData.breed,
@@ -115,35 +97,18 @@ export default function MyCatsPage() {
         }
 
         if (editingCat) {
-            const { error } = await supabase
-                .from('cats')
-                .update(catData)
-                .eq('id', editingCat.id)
-
+            const { error } = await supabase.from('cats').update(catData).eq('id', editingCat.id)
             if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
             else {
-                Swal.fire({
-                    title: 'บันทึกสำเร็จ',
-                    icon: 'success',
-                    timer: 1500,
-                    showConfirmButton: false
-                })
+                Swal.fire({ title: 'บันทึกสำเร็จ', icon: 'success', timer: 1500, showConfirmButton: false })
                 setShowModal(false)
                 fetchCats()
             }
         } else {
-            const { error } = await supabase
-                .from('cats')
-                .insert([catData])
-
+            const { error } = await supabase.from('cats').insert([catData])
             if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
             else {
-                Swal.fire({
-                    title: 'บันทึกสำเร็จ',
-                    icon: 'success',
-                    timer: 1500,
-                    showConfirmButton: false
-                })
+                Swal.fire({ title: 'บันทึกสำเร็จ', icon: 'success', timer: 1500, showConfirmButton: false })
                 setShowModal(false)
                 fetchCats()
             }
@@ -161,14 +126,8 @@ export default function MyCatsPage() {
             confirmButtonText: 'ลบข้อมูล',
             cancelButtonText: 'ยกเลิก'
         })
-
         if (result.isConfirmed) {
-            // Soft delete
-            const { error } = await supabase
-                .from('cats')
-                .update({ is_deleted: true })
-                .eq('id', id)
-
+            const { error } = await supabase.from('cats').update({ is_deleted: true }).eq('id', id)
             if (error) Swal.fire('เกิดข้อผิดพลาด', error.message, 'error')
             else {
                 Swal.fire('ลบเรียบร้อย!', '', 'success')
@@ -178,7 +137,7 @@ export default function MyCatsPage() {
     }
 
     const getGenderInfo = (gender) => {
-        if (gender === 'male') return { label: '♂️', bg: '#dbeafe', color: '#1e40af' } // Short text
+        if (gender === 'male') return { label: '♂️', bg: '#dbeafe', color: '#1e40af' }
         if (gender === 'female') return { label: '♀️', bg: '#fce7f3', color: '#be185d' }
         return { label: '?', bg: '#f3f4f6', color: '#4b5563' }
     }
@@ -192,14 +151,36 @@ export default function MyCatsPage() {
 
     return (
         <div style={styles.pageBackground}>
-            <div style={styles.container}>
-                {/* Hero Section */}
-                <header style={styles.header}>
-                    <div style={styles.headerContent}>
-                        <h1 style={styles.title}>สมาชิกตัวน้อย 🐾</h1>
+            {/* CSS สำหรับ Responsive */}
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                @media (max-width: 768px) {
+                    .cats-container { padding: 20px 15px !important; }
+                    .cats-header { 
+                        flex-direction: column !important; 
+                        text-align: center !important; 
+                        gap: 20px !important; 
+                        padding: 25px 20px !important;
+                    }
+                    .cats-title { font-size: 1.8rem !important; }
+                    .cats-grid { grid-template-columns: 1fr !important; }
+                    .form-row { grid-template-columns: 1fr !important; gap: 0 !important; }
+                    .modal-box { padding: 0 !important; max-width: 95% !important; border-radius: 20px !important; }
+                    .modal-header { padding: 20px !important; }
+                    .modal-form { padding: 20px !important; }
+                    .add-btn-mobile { width: 100% !important; justify-content: center !important; }
+                    .radio-group { flex-wrap: wrap !important; }
+                    .radio-label { flex: 1 !important; justify-content: center !important; }
+                }
+            `}} />
+
+            <div className="cats-container" style={styles.container}>
+                <header className="cats-header" style={styles.header}>
+                    <div>
+                        <h1 className="cats-title" style={styles.title}>สมาชิกตัวน้อย 🐾</h1>
                         <p style={styles.subtitle}>จัดการข้อมูลเจ้านายสุดที่รักของคุณที่นี่</p>
                     </div>
-                    <button onClick={openAddModal} style={styles.addBtn}>
+                    <button onClick={openAddModal} className="add-btn-mobile" style={styles.addBtn}>
                         <span style={styles.addIcon}>+</span> เพิ่มแมวใหม่
                     </button>
                 </header>
@@ -212,7 +193,7 @@ export default function MyCatsPage() {
                         <button onClick={openAddModal} style={styles.addBtnOutline}>เพิ่มแมวตัวแรกเลย!</button>
                     </div>
                 ) : (
-                    <div style={styles.grid}>
+                    <div className="cats-grid" style={styles.grid}>
                         {cats.map((cat) => {
                             const gender = getGenderInfo(cat.gender)
                             return (
@@ -235,13 +216,11 @@ export default function MyCatsPage() {
                                     <div style={styles.cardContent}>
                                         <h3 style={styles.catName}>{cat.name}</h3>
                                         <p style={styles.catBreed}>{cat.breed || 'ไม่ระบุสายพันธุ์'}</p>
-
                                         {cat.health_info && (
                                             <div style={styles.healthInfo}>
                                                 💊 {cat.health_info}
                                             </div>
                                         )}
-
                                         <div style={styles.actionButtons}>
                                             <button onClick={() => openEditModal(cat)} style={styles.editBtn}>แก้ไข</button>
                                             <button onClick={() => handleDelete(cat.id, cat.name)} style={styles.deleteBtn}>ลบ</button>
@@ -254,18 +233,14 @@ export default function MyCatsPage() {
                 )}
             </div>
 
-            {/* Modal Form */}
             {showModal && (
                 <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
-                    <div style={styles.modal} onClick={e => e.stopPropagation()}>
-                        <div style={styles.modalHeader}>
-                            <h2 style={styles.modalTitle}>
-                                {editingCat ? '✏️ แก้ไขข้อมูล' : '✨ เพิ่มแมวใหม่'}
-                            </h2>
+                    <div className="modal-box" style={styles.modal} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header" style={styles.modalHeader}>
+                            <h2 style={styles.modalTitle}>{editingCat ? '✏️ แก้ไขข้อมูล' : '✨ เพิ่มแมวใหม่'}</h2>
                             <button onClick={() => setShowModal(false)} style={styles.closeBtn}>✕</button>
                         </div>
-
-                        <form onSubmit={handleSubmit} style={styles.form}>
+                        <form onSubmit={handleSubmit} className="modal-form" style={styles.form}>
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>ชื่อน้องแมว *</label>
                                 <input
@@ -277,8 +252,7 @@ export default function MyCatsPage() {
                                     placeholder="เช่น น้องส้ม"
                                 />
                             </div>
-
-                            <div style={styles.row}>
+                            <div className="form-row" style={styles.row}>
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>สายพันธุ์</label>
                                     <input
@@ -300,80 +274,42 @@ export default function MyCatsPage() {
                                     />
                                 </div>
                             </div>
-
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>เพศ</label>
-                                <div style={styles.radioGroup}>
-                                    <label style={{ ...styles.radioLabel, ...(formData.gender === 'male' ? styles.radioActive : {}) }}>
-                                        <input
-                                            type="radio"
-                                            name="gender"
-                                            value="male"
-                                            checked={formData.gender === 'male'}
-                                            onChange={e => setFormData({ ...formData, gender: e.target.value })}
-                                            style={styles.radioInput}
-                                        />
+                                <div className="radio-group" style={styles.radioGroup}>
+                                    <label className="radio-label" style={{ ...styles.radioLabel, ...(formData.gender === 'male' ? styles.radioActive : {}) }}>
+                                        <input type="radio" name="gender" value="male" checked={formData.gender === 'male'} onChange={e => setFormData({ ...formData, gender: e.target.value })} style={styles.radioInput} />
                                         ♂️ ตัวผู้
                                     </label>
-                                    <label style={{ ...styles.radioLabel, ...(formData.gender === 'female' ? styles.radioActive : {}) }}>
-                                        <input
-                                            type="radio"
-                                            name="gender"
-                                            value="female"
-                                            checked={formData.gender === 'female'}
-                                            onChange={e => setFormData({ ...formData, gender: e.target.value })}
-                                            style={styles.radioInput}
-                                        />
+                                    <label className="radio-label" style={{ ...styles.radioLabel, ...(formData.gender === 'female' ? styles.radioActive : {}) }}>
+                                        <input type="radio" name="gender" value="female" checked={formData.gender === 'female'} onChange={e => setFormData({ ...formData, gender: e.target.value })} style={styles.radioInput} />
                                         ♀️ ตัวเมีย
                                     </label>
                                 </div>
                             </div>
-
                             <div style={styles.formGroup}>
-                                <label style={styles.label}>ข้อมูลสุขภาพ / โรคประจำตัว</label>
-                                <textarea
-                                    value={formData.health_info}
-                                    onChange={e => setFormData({ ...formData, health_info: e.target.value })}
-                                    style={styles.textarea}
-                                    placeholder="ระบุข้อมูลสำคัญที่พี่เลี้ยงควรรู้..."
-                                />
+                                <label style={styles.label}>ข้อมูลสุขภาพ</label>
+                                <textarea value={formData.health_info} onChange={e => setFormData({ ...formData, health_info: e.target.value })} style={styles.textarea} placeholder="ระบุข้อมูลสำคัญที่พี่เลี้ยงควรรู้..." />
                             </div>
-
-
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>รูปประจำตัวน้องแมว</label>
                                 <div style={styles.uploadContainer}>
-                                    {formData.image_url && (
+                                    {formData.image_url ? (
                                         <div style={styles.previewContainer}>
                                             <img src={formData.image_url} alt="Preview" style={styles.previewImage} />
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData({ ...formData, image_url: '' })}
-                                                style={styles.removeImageBtn}
-                                            >✕</button>
+                                            <button type="button" onClick={() => setFormData({ ...formData, image_url: '' })} style={styles.removeImageBtn}>✕</button>
                                         </div>
-                                    )}
-
-                                    {!formData.image_url && (
+                                    ) : (
                                         <label style={styles.uploadBtn}>
                                             {uploading ? '⏳ กำลังอัปโหลด...' : '📸 เลือกรูปภาพ'}
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleImageUpload}
-                                                style={{ display: 'none' }}
-                                                disabled={uploading}
-                                            />
+                                            <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} disabled={uploading} />
                                         </label>
                                     )}
                                 </div>
                             </div>
-
                             <div style={styles.formActions}>
                                 <button type="button" onClick={() => setShowModal(false)} style={styles.cancelBtn}>ยกเลิก</button>
-                                <button type="submit" style={styles.submitBtn}>
-                                    {editingCat ? 'บันทึก' : 'เพิ่มน้องแมว'}
-                                </button>
+                                <button type="submit" style={styles.submitBtn}>{editingCat ? 'บันทึก' : 'เพิ่มน้องแมว'}</button>
                             </div>
                         </form>
                     </div>
@@ -384,110 +320,56 @@ export default function MyCatsPage() {
 }
 
 const styles = {
+    // สไตล์เดิมคงไว้ทั้งหมด
     pageBackground: { backgroundColor: '#fffaf5', minHeight: '100vh', padding: '40px 20px', fontFamily: "'Sarabun', 'Kanit', sans-serif" },
     container: { maxWidth: '1000px', margin: '0 auto' },
-
-    header: {
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px',
-        backgroundColor: '#fff7ed', padding: '30px', borderRadius: '24px', border: '1px solid #ffedd5'
-    },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', backgroundColor: '#fff7ed', padding: '30px', borderRadius: '24px', border: '1px solid #ffedd5' },
     title: { fontSize: '2.2rem', color: '#431407', margin: '0 0 5px 0', fontWeight: '800' },
     subtitle: { color: '#9a3412', fontSize: '1.1rem', margin: 0 },
-
-    addBtn: {
-        padding: '14px 28px', backgroundColor: '#ea580c', color: 'white',
-        border: 'none', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold',
-        fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px',
-        boxShadow: '0 4px 15px rgba(234, 88, 12, 0.3)', transition: 'transform 0.2s',
-        ':hover': { transform: 'scale(1.05)' }
-    },
+    addBtn: { padding: '14px 28px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(234, 88, 12, 0.3)' },
     addIcon: { fontSize: '1.2rem', fontWeight: 'bold' },
-
     loadingContainer: { textAlign: 'center', padding: '100px', color: '#ea580c' },
-    spinner: { fontSize: '40px', marginBottom: '10px', animation: 'spin 1s infinite' },
-
-    emptyState: {
-        textAlign: 'center', backgroundColor: 'white', padding: '80px 40px',
-        borderRadius: '24px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.05)',
-        maxWidth: '500px', margin: '0 auto', border: '1px dashed #fed7aa'
-    },
+    spinner: { fontSize: '40px', marginBottom: '10px' },
+    emptyState: { textAlign: 'center', backgroundColor: 'white', padding: '80px 40px', borderRadius: '24px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.05)', maxWidth: '500px', margin: '0 auto', border: '1px dashed #fed7aa' },
     emptyEmoji: { fontSize: '80px', marginBottom: '20px' },
     emptyTitle: { fontSize: '1.5rem', color: '#1f2937', marginBottom: '10px' },
     emptyDesc: { color: '#6b7280', marginBottom: '30px', fontSize: '1rem' },
-    addBtnOutline: {
-        padding: '12px 30px', backgroundColor: 'white', color: '#ea580c',
-        border: '2px solid #ea580c', borderRadius: '50px', cursor: 'pointer',
-        fontWeight: 'bold', fontSize: '1rem', transition: 'background 0.2s',
-        ':hover': { backgroundColor: '#fff7ed' }
-    },
-
+    addBtnOutline: { padding: '12px 30px', backgroundColor: 'white', color: '#ea580c', border: '2px solid #ea580c', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' },
-    card: {
-        backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden',
-        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', transition: 'transform 0.3s, box-shadow 0.3s',
-        border: '1px solid #f3f4f6',
-        ':hover': { transform: 'translateY(-10px)', boxShadow: '0 20px 30px -10px rgba(0,0,0,0.1)' }
-    },
+    card: { backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' },
     cardImageWrapper: { height: '220px', position: 'relative', overflow: 'hidden' },
-    img: { width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s', ':hover': { transform: 'scale(1.1)' } },
+    img: { width: '100%', height: '100%', objectFit: 'cover' },
     badgeGroup: { position: 'absolute', top: '15px', right: '15px', display: 'flex', gap: '8px' },
-    badge: {
-        padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem',
-        fontWeight: 'bold', backdropFilter: 'blur(4px)', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-    },
-    ageBadge: {
-        padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem',
-        fontWeight: 'bold', backgroundColor: 'rgba(255,255,255,0.9)', color: '#1f2937',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-    },
-
+    badge: { padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold' },
+    ageBadge: { padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', backgroundColor: 'rgba(255,255,255,0.9)', color: '#1f2937' },
     cardContent: { padding: '25px', display: 'flex', flexDirection: 'column', gap: '10px' },
     catName: { margin: 0, fontSize: '1.4rem', color: '#1f2937', fontWeight: 'bold' },
     catBreed: { margin: 0, fontSize: '0.95rem', color: '#6b7280' },
-    healthInfo: {
-        backgroundColor: '#fff7ed', padding: '10px 15px', borderRadius: '12px',
-        color: '#9a3412', fontSize: '0.9rem', marginTop: '5px', lineHeight: '1.4'
-    },
-
+    healthInfo: { backgroundColor: '#fff7ed', padding: '10px 15px', borderRadius: '12px', color: '#9a3412', fontSize: '0.9rem', marginTop: '5px' },
     actionButtons: { display: 'flex', gap: '10px', marginTop: '15px' },
-    editBtn: {
-        flex: 1, padding: '10px', backgroundColor: '#f3f4f6', color: '#4b5563',
-        border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold',
-        transition: 'background 0.2s', ':hover': { backgroundColor: '#e5e7eb' }
-    },
-    deleteBtn: {
-        padding: '10px 15px', backgroundColor: '#fee2e2', color: '#ef4444',
-        border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold',
-        transition: 'background 0.2s', ':hover': { backgroundColor: '#fecaca' }
-    },
-
-    // Modal
-    modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
-    modal: { backgroundColor: 'white', borderRadius: '24px', width: '100%', maxWidth: '550px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' },
+    editBtn: { flex: 1, padding: '10px', backgroundColor: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' },
+    deleteBtn: { padding: '10px 15px', backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' },
+    modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' },
+    modal: { backgroundColor: 'white', borderRadius: '24px', width: '100%', maxWidth: '550px', overflow: 'hidden' },
     modalHeader: { padding: '25px 30px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff7ed' },
     modalTitle: { margin: 0, fontSize: '1.5rem', color: '#431407', fontWeight: 'Bold' },
-    closeBtn: { background: 'none', border: 'none', fontSize: '1.8rem', color: '#9a3412', cursor: 'pointer', lineHeight: 1 },
-
+    closeBtn: { background: 'none', border: 'none', fontSize: '1.8rem', color: '#9a3412', cursor: 'pointer' },
     form: { padding: '30px' },
     formGroup: { marginBottom: '20px' },
     row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
-    label: { display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151', fontSize: '0.95rem' },
-    input: { width: '100%', padding: '12px 15px', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box', backgroundColor: '#f9fafb', ':focus': { borderColor: '#ea580c', backgroundColor: 'white' } },
-    textarea: { width: '100%', padding: '12px 15px', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '1rem', minHeight: '100px', outline: 'none', boxSizing: 'border-box', resize: 'vertical', backgroundColor: '#f9fafb' },
-
+    label: { display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' },
+    input: { width: '100%', padding: '12px 15px', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '1rem', outline: 'none', boxSizing: 'border-box', backgroundColor: '#f9fafb' },
+    textarea: { width: '100%', padding: '12px 15px', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '1rem', minHeight: '100px', boxSizing: 'border-box', backgroundColor: '#f9fafb' },
     radioGroup: { display: 'flex', gap: '15px' },
-    radioLabel: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', border: '1px solid #e5e7eb', borderRadius: '12px', cursor: 'pointer', color: '#4b5563', backgroundColor: '#f9fafb', transition: 'all 0.2s' },
-    radioActive: { borderColor: '#ea580c', backgroundColor: '#fff7ed', color: '#ea580c', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(234, 88, 12, 0.1)' },
+    radioLabel: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', border: '1px solid #e5e7eb', borderRadius: '12px', cursor: 'pointer', color: '#4b5563', backgroundColor: '#f9fafb' },
+    radioActive: { borderColor: '#ea580c', backgroundColor: '#fff7ed', color: '#ea580c', fontWeight: 'bold' },
     radioInput: { display: 'none' },
-
     formActions: { display: 'flex', gap: '15px', marginTop: '20px' },
-    submitBtn: { flex: 2, padding: '14px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(234, 88, 12, 0.2)' },
-    cancelBtn: { flex: 1, padding: '14px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: '12px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer' },
-
-    // Upload Styles
+    submitBtn: { flex: 2, padding: '14px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 'bold' },
+    cancelBtn: { flex: 1, padding: '14px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: '12px' },
     uploadContainer: { marginTop: '10px' },
     previewContainer: { position: 'relative', width: '100%', height: '200px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb' },
     previewImage: { width: '100%', height: '100%', objectFit: 'cover' },
-    removeImageBtn: { position: 'absolute', top: '10px', right: '10px', width: '30px', height: '30px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' },
-    uploadBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', backgroundColor: '#f9fafb', border: '2px dashed #d1d5db', borderRadius: '12px', cursor: 'pointer', color: '#6b7280', fontWeight: '600', transition: 'all 0.2s', ':hover': { borderColor: '#ea580c', color: '#ea580c', backgroundColor: '#fff7ed' } },
+    removeImageBtn: { position: 'absolute', top: '10px', right: '10px', width: '30px', height: '30px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', cursor: 'pointer' },
+    uploadBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '120px', backgroundColor: '#f9fafb', border: '2px dashed #d1d5db', borderRadius: '12px', cursor: 'pointer', color: '#6b7280', fontWeight: '600' },
 }

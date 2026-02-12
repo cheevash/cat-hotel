@@ -127,29 +127,64 @@ function BookingForm() {
 
   return (
     <div style={styles.page}>
+      {/* CSS สำหรับ Responsive */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @media (max-width: 768px) {
+          .booking-container {
+            padding: 0 15px !important;
+          }
+          .booking-layout {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+          .booking-header {
+            padding: 30px 0 !important;
+          }
+          .booking-title {
+            font-size: 1.8rem !important;
+          }
+          .section-card {
+            padding: 20px !important;
+            border-radius: 16px !important;
+          }
+          .date-grid {
+            grid-template-columns: 1fr !important;
+            gap: 15px !important;
+          }
+          .sidebar-summary {
+            position: static !important;
+            margin-bottom: 30px;
+          }
+          .cat-grid {
+             grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+      `}} />
+
       <div style={styles.bgOverlay}></div>
-      <div style={styles.container}>
+      <div className="booking-container" style={styles.container}>
 
         {/* Header */}
-        <div style={styles.header}>
+        <div className="booking-header" style={styles.header}>
           <Link href={`/rooms/${roomId}`} style={styles.backLink}>
             <span style={styles.backIcon}>←</span> ยกเลิกและกลับไปเลือกห้อง
           </Link>
-          <h1 style={styles.title}>Booking Reservation</h1>
+          <h1 className="booking-title" style={styles.title}>Booking Reservation</h1>
           <p style={styles.subtitle}>กรอกข้อมูลการเข้าพักสำหรับน้องแมวของคุณ</p>
         </div>
 
-        <div style={styles.layout}>
+        <div className="booking-layout" style={styles.layout}>
           {/* Left Column: Form */}
           <div style={styles.mainContent}>
             <form onSubmit={handleBooking} style={styles.form}>
 
               {/* Section 1: Dates */}
-              <section style={styles.section}>
+              <section className="section-card" style={styles.section}>
                 <h2 style={styles.sectionTitle}>
                   <span style={styles.stepNum}>1</span> ระยะเวลาเข้าพัก
                 </h2>
-                <div style={styles.dateGrid}>
+                <div className="date-grid" style={styles.dateGrid}>
                   <div style={styles.inputGroup}>
                     <label style={styles.label}>วันที่เช็คอิน</label>
                     <input
@@ -176,7 +211,7 @@ function BookingForm() {
               </section>
 
               {/* Section 2: Cat Selection */}
-              <section style={styles.section}>
+              <section className="section-card" style={styles.section}>
                 <div style={styles.sectionHeader}>
                   <h2 style={styles.sectionTitle}>
                     <span style={styles.stepNum}>2</span> ข้อมูลน้องแมว
@@ -185,7 +220,7 @@ function BookingForm() {
                 </div>
 
                 {cats.length > 0 ? (
-                  <div style={styles.catGrid}>
+                  <div className="cat-grid" style={styles.catGrid}>
                     {cats.map(cat => (
                       <div
                         key={cat.id}
@@ -219,8 +254,8 @@ function BookingForm() {
                 )}
               </section>
 
-              {/* Section 3: Special Request (Optional/Placeholder) */}
-              <section style={styles.section}>
+              {/* Section 3: Special Request */}
+              <section className="section-card" style={styles.section}>
                 <h2 style={styles.sectionTitle}>
                   <span style={styles.stepNum}>3</span> เพิ่มเติม (Optional)
                 </h2>
@@ -234,7 +269,7 @@ function BookingForm() {
           </div>
 
           {/* Right Column: Sticky Summary */}
-          <div style={styles.sidebar}>
+          <div className="sidebar-summary" style={styles.sidebar}>
             <div style={styles.summaryCard}>
               <div style={styles.roomPreview}>
                 <img src={getRoomImage()} alt="Room" style={styles.roomImg} />
@@ -304,65 +339,27 @@ export default function BookingPage() {
 }
 
 const styles = {
-  // Page Layout
-  page: {
-    minHeight: '100vh',
-    backgroundColor: '#f3f4f6',
-    fontFamily: "'Kanit', sans-serif",
-    position: 'relative',
-    paddingBottom: '80px'
-  },
-  bgOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '300px',
-    background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
-    zIndex: 0
-  },
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '0 20px',
-    position: 'relative',
-    zIndex: 1
-  },
+  // Styles เดิมคงไว้ทั้งหมดตามความต้องการ
+  page: { minHeight: '100vh', backgroundColor: '#f3f4f6', fontFamily: "'Kanit', sans-serif", position: 'relative', paddingBottom: '80px' },
+  bgOverlay: { position: 'absolute', top: 0, left: 0, right: 0, height: '300px', background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)', zIndex: 0 },
+  container: { maxWidth: '1200px', margin: '0 auto', padding: '0 20px', position: 'relative', zIndex: 1 },
   loading: { textAlign: 'center', padding: '50px', color: '#666' },
-
-  // Header
   header: { padding: '40px 0', color: 'white' },
-  backLink: { color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', transition: 'color 0.2s', cursor: 'pointer' },
+  backLink: { color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', cursor: 'pointer' },
   backIcon: { fontSize: '1.2rem' },
   title: { fontSize: '2.5rem', fontWeight: '800', margin: '0 0 10px', background: 'linear-gradient(to right, #fbbf24, #f59e0b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
   subtitle: { fontSize: '1.1rem', color: 'rgba(255,255,255,0.8)', fontWeight: '300' },
-
-  // Layout Grid
   layout: { display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '80px', alignItems: 'start' },
-
-  // Forms
-  mainContent: {
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  section: {
-    backgroundColor: 'white',
-    borderRadius: '24px',
-    padding: '40px',
-    boxShadow: '0 10px 40px rgba(0,0,0,0.05)',
-    border: '1px solid #f0f0f0'
-  }, sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' },
+  mainContent: { display: 'flex', flexDirection: 'column' },
+  section: { backgroundColor: 'white', borderRadius: '24px', padding: '40px', boxShadow: '0 10px 40px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' },
+  sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' },
   sectionTitle: { fontSize: '1.25rem', fontWeight: '700', color: '#1f2937', margin: '0 0 20px', display: 'flex', alignItems: 'center', gap: '12px' },
   stepNum: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#ea580c', color: 'white', borderRadius: '50%', fontSize: '1rem', fontWeight: 'bold' },
-
-  // Date Inputs
   dateGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
   inputGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
   label: { fontSize: '0.95rem', fontWeight: '600', color: '#4b5563' },
-  input: { padding: '15px', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '1rem', backgroundColor: '#f9fafb', outline: 'none', transition: 'all 0.2s' },
-
-  // Cat Select
-  addCatBtn: { color: '#ea580c', textDecoration: 'none', fontWeight: '600', fontSize: '0.9rem', border: '1px solid #ea580c', padding: '6px 14px', borderRadius: '50px', transition: 'all 0.2s' },
+  input: { padding: '15px', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '1rem', backgroundColor: '#f9fafb', outline: 'none' },
+  addCatBtn: { color: '#ea580c', textDecoration: 'none', fontWeight: '600', fontSize: '0.9rem', border: '1px solid #ea580c', padding: '6px 14px', borderRadius: '50px' },
   catGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' },
   catCard: { border: '2px solid #e5e7eb', borderRadius: '16px', padding: '20px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s', backgroundColor: 'white' },
   catCardSelected: { borderColor: '#ea580c', backgroundColor: '#fff7ed', transform: 'translateY(-2px)', boxShadow: '0 10px 20px rgba(234, 88, 12, 0.1)' },
@@ -373,35 +370,24 @@ const styles = {
   catBreed: { fontSize: '0.8rem', color: '#6b7280', margin: 0 },
   emptyCatState: { textAlign: 'center', padding: '30px', backgroundColor: '#f9fafb', borderRadius: '16px', border: '2px dashed #e5e7eb' },
   addCatLinkPrimary: { display: 'inline-block', marginTop: '10px', backgroundColor: '#ea580c', color: 'white', textDecoration: 'none', padding: '10px 20px', borderRadius: '50px', fontWeight: '600', fontSize: '0.9rem' },
-
-  // Textarea
   textarea: { width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '1rem', backgroundColor: '#f9fafb', outline: 'none', resize: 'vertical', minHeight: '100px' },
-
-  // Sidebar Summary
   sidebar: { position: 'sticky', top: '30px' },
   summaryCard: { backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' },
   roomPreview: { position: 'relative', height: '180px' },
   roomImg: { width: '100%', height: '100%', objectFit: 'cover' },
   roomOverlay: { position: 'absolute', top: '15px', left: '15px' },
   roomType: { backgroundColor: 'rgba(0,0,0,0.7)', color: 'white', padding: '6px 12px', borderRadius: '50px', fontSize: '0.85rem', fontWeight: 'bold', backdropFilter: 'blur(4px)' },
-
   summaryBody: { padding: '25px' },
   summaryTitle: { fontSize: '1.2rem', fontWeight: '800', color: '#1f2937', margin: '0 0 20px' },
   summaryRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.95rem', color: '#4b5563' },
   summaryLabel: { color: '#6b7280' },
   summaryValue: { fontWeight: '600', color: '#1f2937' },
   divider: { height: '1px', backgroundColor: '#f3f4f6', margin: '15px 0' },
-
   totalSection: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', marginBottom: '25px', paddingTop: '15px', borderTop: '2px dashed #e5e7eb' },
   totalLabel: { fontSize: '1.1rem', fontWeight: '700', color: '#1f2937' },
   totalPrice: { fontSize: '1.8rem', fontWeight: '800', color: '#ea580c' },
-
-  confirmBtn: { width: '100%', padding: '18px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '16px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 10px 20px rgba(234, 88, 12, 0.3)' },
+  confirmBtn: { width: '100%', padding: '18px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '16px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 10px 20px rgba(234, 88, 12, 0.3)' },
   disabledBtn: { backgroundColor: '#d1d5db', cursor: 'not-allowed', boxShadow: 'none' },
   toc: { textAlign: 'center', fontSize: '0.8rem', color: '#9ca3af', marginTop: '15px' },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '30px'
-  }
+  form: { display: 'flex', flexDirection: 'column', gap: '30px' }
 }

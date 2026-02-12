@@ -20,6 +20,8 @@ export default function NavbarAdmin() {
     { href: '/admin/rooms', icon: '🏨', label: 'จัดการห้องพัก' },
     { href: '/admin/customers', icon: '👥', label: 'จัดการลูกค้า' },
     { href: '/admin/cats', icon: '🐱', label: 'จัดการแมว' },
+    { href: '/admin/pricing', icon: '💰', label: 'จัดการราคา' },
+    { href: '/admin/gallery', icon: '🖼️', label: 'จัดการแกลเลอรี่' },
     { href: '/admin/reviews', icon: '⭐', label: 'จัดการรีวิว' },
     { href: '/admin/settings', icon: '⚙️', label: 'ตั้งค่าระบบ' },
   ]
@@ -64,8 +66,11 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     position: 'fixed',
+    top: 0,
+    left: 0,
     height: '100vh',
-    boxShadow: '4px 0 15px rgba(0,0,0,0.1)'
+    boxShadow: '4px 0 15px rgba(0,0,0,0.1)',
+    zIndex: 100
   },
   logoSection: {
     padding: '25px 20px',

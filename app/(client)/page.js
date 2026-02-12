@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 import BookingCalendar from './BookingCalendar'
-import Loading from '../../loading'
+import Loading from '../loading'
 
 function RoomList() {
   const [rooms, setRooms] = useState([])

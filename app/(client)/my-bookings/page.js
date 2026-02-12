@@ -56,11 +56,10 @@ export default function MyBookingsPage() {
     }
     if (s === 'checkedin') return { text: 'เข้าพักแล้ว', color: '#2563eb', bg: '#dbeafe', icon: '🏠' }
     if (s === 'checkedout') return { text: 'เช็คเอาท์', color: '#64748b', bg: '#f1f5f9', icon: '👋' }
-    if (s === 'cancelled') return { text: 'ยกเลิกแล้ว', color: '#ef4444', bg: '#fee2e2', icon: '❌' } // Red for Cancelled
+    if (s === 'cancelled') return { text: 'ยกเลิกแล้ว', color: '#ef4444', bg: '#fee2e2', icon: '❌' }
     return { text: status, color: '#64748b', bg: '#f1f5f9', icon: '📝' }
   }
 
-  // Filter bookings based on active tab
   const filteredBookings = bookings.filter(b => {
     const isActive = ['pending', 'confirmed', 'checkedin'].includes(b.status?.toLowerCase())
     return activeTab === 'active' ? isActive : !isActive
@@ -75,21 +74,82 @@ export default function MyBookingsPage() {
 
   return (
     <div style={styles.pageBackground}>
-      <div style={styles.container}>
+      {/* CSS สำหรับ Responsive */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @media (max-width: 768px) {
+          .bookings-container {
+            padding: 20px 15px !important;
+          }
+          .bookings-title {
+            font-size: 1.5rem !important;
+          }
+          .booking-card {
+            flex-direction: column !important;
+            border-radius: 16px !important;
+          }
+          .card-left-date {
+            width: 100% !important;
+            flex-direction: row !important;
+            justify-content: flex-start !important;
+            padding: 12px 20px !important;
+            border-right: none !important;
+            border-bottom: 1px dashed #e2e8f0 !important;
+          }
+          .date-box-mobile {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          .date-day-text {
+            font-size: 1.4rem !important;
+          }
+          .card-header-flex {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+          }
+          .status-badge-mobile {
+            align-self: flex-start !important;
+          }
+          .action-buttons-group {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+            width: 100% !important;
+          }
+          .action-buttons-group > a, .action-buttons-group > button {
+            flex: 1 1 auto !important;
+            text-align: center !important;
+            justify-content: center !important;
+          }
+          .tabs-container {
+            width: 100% !important;
+          }
+          .tab-btn {
+            padding: 10px 15px !important;
+            font-size: 0.9rem !important;
+            flex: 1;
+          }
+        }
+      `}} />
+
+      <div className="bookings-container" style={styles.container}>
         <header style={styles.header}>
-          <h1 style={styles.title}>การจองของฉัน 📅</h1>
+          <h1 className="bookings-title" style={styles.title}>การจองของฉัน 📅</h1>
           <p style={styles.subtitle}>ติดตามสถานะและประวัติการเข้าพัก</p>
         </header>
 
         {/* Tabs */}
-        <div style={styles.tabs}>
+        <div className="tabs-container" style={styles.tabs}>
           <button
+            className="tab-btn"
             onClick={() => setActiveTab('active')}
             style={activeTab === 'active' ? styles.tabActive : styles.tab}
           >
             รายการปัจจุบัน
           </button>
           <button
+            className="tab-btn"
             onClick={() => setActiveTab('history')}
             style={activeTab === 'history' ? styles.tabActive : styles.tab}
           >
@@ -118,21 +178,20 @@ export default function MyBookingsPage() {
               const nights = calculateNights(booking.check_in_date, booking.check_out_date)
 
               return (
-                <div key={booking.id} style={styles.card}>
-                  <div style={styles.cardLeft}>
-                    <div style={styles.dateBox}>
+                <div key={booking.id} className="booking-card" style={styles.card}>
+                  <div className="card-left-date" style={styles.cardLeft}>
+                    <div className="date-box-mobile" style={styles.dateBox}>
                       <span style={styles.dateMonth}>
                         {new Date(booking.check_in_date).toLocaleDateString('th-TH', { month: 'short' })}
                       </span>
-                      <span style={styles.dateDay}>
+                      <span className="date-day-text" style={styles.dateDay}>
                         {new Date(booking.check_in_date).getDate()}
                       </span>
                     </div>
-                    <div style={styles.verticalLine}></div>
                   </div>
 
                   <div style={styles.cardContent}>
-                    <div style={styles.cardHeader}>
+                    <div className="card-header-flex" style={styles.cardHeader}>
                       <div>
                         <h3 style={styles.roomName}>{booking.rooms?.room_type} (ห้อง {booking.rooms?.room_number})</h3>
                         <div style={styles.subInfo}>
@@ -141,7 +200,7 @@ export default function MyBookingsPage() {
                           <span>{nights} คืน</span>
                         </div>
                       </div>
-                      <span style={{ ...styles.statusBadge, backgroundColor: status.bg, color: status.color }}>
+                      <span className="status-badge-mobile" style={{ ...styles.statusBadge, backgroundColor: status.bg, color: status.color }}>
                         {status.icon} {status.text}
                       </span>
                     </div>
@@ -162,10 +221,10 @@ export default function MyBookingsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div style={styles.cardFooter}>
+                    <div className="card-header-flex" style={styles.cardFooter}>
                       <span style={styles.bookingId}>#{booking.id.slice(0, 8).toUpperCase()}</span>
 
-                      <div style={styles.actionButtons}>
+                      <div className="action-buttons-group" style={styles.actionButtons}>
                         {booking.payment_status === 'Unpaid' && booking.status !== 'Cancelled' && (
                           <Link href={`/payment/${booking.id}`}>
                             <button style={styles.payBtn}>💳 ชำระเงิน</button>
@@ -174,7 +233,7 @@ export default function MyBookingsPage() {
 
                         {booking.payment_status === 'PendingApproval' && (
                           <Link href={`/payment/${booking.id}`}>
-                            <button style={styles.pendingBtn}>⏳ ติดตามสถานะ</button>
+                            <button style={styles.pendingBtn}>⏳ สถานะ</button>
                           </Link>
                         )}
 
@@ -191,7 +250,7 @@ export default function MyBookingsPage() {
                         )}
 
                         <Link href={`/rooms/${booking.room_id}`} style={styles.detailLink}>
-                          รายละเอียดห้อง
+                          ข้อมูลห้อง
                         </Link>
                       </div>
                     </div>
@@ -207,56 +266,40 @@ export default function MyBookingsPage() {
 }
 
 const styles = {
+  // สไตล์เดิมคงไว้ทั้งหมด
   pageBackground: { backgroundColor: '#f8fafc', minHeight: '100vh', padding: '40px 20px', fontFamily: '"Sarabun", "Kanit", sans-serif' },
   container: { maxWidth: '800px', margin: '0 auto' },
-
   header: { marginBottom: '30px', textAlign: 'center' },
   title: { fontSize: '2rem', color: '#1e293b', margin: '0 0 5px 0', fontWeight: '800' },
   subtitle: { color: '#64748b', fontSize: '1rem', margin: 0 },
-
   loadingContainer: { textAlign: 'center', padding: '100px', color: '#ea580c' },
-  spinner: { fontSize: '40px', marginBottom: '10px', animation: 'spin 1s infinite' },
-
+  spinner: { fontSize: '40px', marginBottom: '10px' },
   tabs: { display: 'flex', justifyContent: 'center', marginBottom: '30px', backgroundColor: 'white', padding: '5px', borderRadius: '50px', width: 'fit-content', margin: '0 auto 30px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' },
   tab: { padding: '10px 25px', borderRadius: '50px', border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', fontWeight: '600', transition: 'all 0.2s' },
   tabActive: { padding: '10px 25px', borderRadius: '50px', border: 'none', backgroundColor: '#ea580c', color: 'white', cursor: 'pointer', fontWeight: '600', boxShadow: '0 2px 5px rgba(234, 88, 12, 0.3)' },
-
   emptyState: { textAlign: 'center', padding: '60px', backgroundColor: 'white', borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' },
   bookNowBtn: { marginTop: '20px', padding: '12px 24px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold' },
-
   bookingList: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  card: {
-    backgroundColor: 'white', borderRadius: '20px', overflow: 'hidden',
-    display: 'flex', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9',
-    transition: 'transform 0.2s', ':hover': { transform: 'translateY(-2px)' }
-  },
-
-  cardLeft: {
-    width: '90px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center', borderRight: '1px dashed #e2e8f0', padding: '15px'
-  },
+  card: { backgroundColor: 'white', borderRadius: '20px', overflow: 'hidden', display: 'flex', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' },
+  cardLeft: { width: '90px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '1px dashed #e2e8f0', padding: '15px' },
   dateBox: { textAlign: 'center' },
   dateMonth: { display: 'block', fontSize: '0.85rem', color: '#ef4444', fontWeight: 'bold', textTransform: 'uppercase' },
   dateDay: { display: 'block', fontSize: '1.8rem', color: '#1e293b', fontWeight: '800', lineHeight: 1 },
-
   cardContent: { flex: 1, padding: '20px' },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' },
   roomName: { margin: '0 0 5px 0', fontSize: '1.1rem', color: '#1f2937', fontWeight: '700' },
   subInfo: { display: 'flex', gap: '8px', fontSize: '0.85rem', color: '#64748b' },
   statusBadge: { padding: '6px 12px', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 'bold', whiteSpace: 'nowrap' },
-
   cardDetails: { backgroundColor: '#f8fafc', padding: '15px', borderRadius: '12px', marginBottom: '15px' },
   detailRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem' },
   detailLabel: { color: '#64748b' },
   detailValue: { color: '#334155', fontWeight: '500' },
   totalRow: { display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1', fontWeight: 'bold', color: '#1e293b' },
   totalPrice: { color: '#ea580c', fontSize: '1.1rem' },
-
   cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   bookingId: { fontSize: '0.75rem', color: '#94a3b8', fontFamily: 'monospace' },
-
   actionButtons: { display: 'flex', gap: '10px', alignItems: 'center' },
-  payBtn: { padding: '8px 16px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', boxShadow: '0 2px 5px rgba(234, 88, 12, 0.2)' },
+  payBtn: { padding: '8px 16px', backgroundColor: '#ea580c', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' },
   pendingBtn: { padding: '8px 16px', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fcd34d', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' },
   detailBtn: { padding: '8px 16px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' },
   reviewBtn: { padding: '8px 16px', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' },

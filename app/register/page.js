@@ -17,32 +17,22 @@ export default function RegisterPage() {
 
   const handleRegister = async (e) => {
     e.preventDefault()
-
     if (!firstName || !lastName || !email || !password) {
       Swal.fire('ข้อมูลไม่ครบถ้วน', 'กรุณากรอกข้อมูลให้ครบถ้วน', 'warning')
       return
     }
-
     if (password !== confirmPassword) {
       Swal.fire('รหัสผ่านไม่ตรงกัน', 'กรุณาตรวจสอบอีกครั้ง', 'error')
       return
     }
-
     if (password.length < 6) {
       Swal.fire('รหัสผ่านสั้นเกินไป', 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร', 'warning')
       return
     }
-
     setLoading(true)
-
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
       if (authError) throw authError
-
       const user = authData.user
       if (user) {
         const { error: profileError } = await supabase
@@ -54,26 +44,17 @@ export default function RegisterPage() {
             email: email,
             updated_at: new Date().toISOString(),
           })
-
         if (profileError) throw profileError
       }
-
       Swal.fire({
         title: 'สมัครสมาชิกสำเร็จ 🎉',
         text: 'กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี',
         icon: 'success',
         confirmButtonText: 'ตกลง'
-      }).then(() => {
-        router.push('/login')
-      })
-
+      }).then(() => { router.push('/login') })
     } catch (error) {
-      console.error('Registration Error:', error)
-
       let msg = error.message
       if (msg === 'User already registered') msg = 'อีเมลนี้ถูกใช้งานไปแล้ว'
-      if (msg === 'Password should be at least 6 characters') msg = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'
-
       Swal.fire('สมัครสมาชิกไม่สำเร็จ', msg, 'error')
     } finally {
       setLoading(false)
@@ -82,35 +63,64 @@ export default function RegisterPage() {
 
   return (
     <div style={styles.page}>
-      {/* Background Decorations */}
+      {/* CSS สำหรับ Mobile Responsive */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @media (max-width: 768px) {
+          .main-container {
+            flex-direction: column !important;
+            max-width: 100% !important;
+            border-radius: 20px !important;
+            margin: 10px !important;
+            height: auto !important;
+          }
+          .left-panel {
+            padding: 40px 20px !important;
+            text-align: center !important;
+          }
+          .right-panel {
+            padding: 40px 20px !important;
+          }
+          .input-row {
+            grid-template-columns: 1fr !important; /* ปรับชื่อ-นามสกุลให้ซ้อนกันในมือถือ */
+          }
+          .welcome-text, .benefits, .cat-decor {
+            display: none !important; /* ซ่อนรายละเอียดบางส่วนในมือถือเพื่อไม่ให้ยาวเกินไป */
+          }
+          .brand-name {
+            font-size: 2rem !important;
+          }
+        }
+      `}} />
+
       <div style={styles.bgCircle1}></div>
       <div style={styles.bgCircle2}></div>
 
-      <div style={styles.container}>
-        {/* Left Side - Branding */}
-        <div style={styles.leftPanel}>
+      <div className="main-container" style={styles.container}>
+        {/* Left Side */}
+        <div className="left-panel" style={styles.leftPanel}>
           <div style={styles.brand}>
             <span style={styles.brandIcon}>🐱</span>
-            <h1 style={styles.brandName}>Cat Hotel</h1>
+            <h1 className="brand-name" style={styles.brandName}>Cat Hotel</h1>
             <p style={styles.brandTag}>Luxury Pet Stay</p>
           </div>
-          <div style={styles.welcomeText}>
+          <div className="welcome-text" style={styles.welcomeText}>
             <h2 style={styles.welcomeTitle}>มาเป็นครอบครัว Cat Hotel!</h2>
             <p style={styles.welcomeDesc}>
               สมัครสมาชิกเพื่อรับสิทธิพิเศษมากมาย<br />
               ส่วนลดสำหรับสมาชิก และโปรโมชั่นพิเศษ
             </p>
           </div>
-          <div style={styles.benefits}>
+          <div className="benefits" style={styles.benefits}>
             <div style={styles.benefitItem}>✅ จองห้องพักออนไลน์ได้ตลอด 24 ชม.</div>
             <div style={styles.benefitItem}>✅ รับส่วนลด 10% สำหรับการจองครั้งแรก</div>
             <div style={styles.benefitItem}>✅ สะสมแต้มแลกของรางวัล</div>
           </div>
-          <div style={styles.catDecor}>🐾 😺 🐾</div>
+          <div className="cat-decor" style={styles.catDecor}>🐾 😺 🐾</div>
         </div>
 
-        {/* Right Side - Form */}
-        <div style={styles.rightPanel}>
+        {/* Right Side */}
+        <div className="right-panel" style={styles.rightPanel}>
           <div style={styles.formContainer}>
             <div style={styles.formHeader}>
               <h2 style={styles.formTitle}>สมัครสมาชิก</h2>
@@ -118,7 +128,7 @@ export default function RegisterPage() {
             </div>
 
             <form onSubmit={handleRegister}>
-              <div style={styles.inputRow}>
+              <div className="input-row" style={styles.inputRow}>
                 <div style={styles.inputGroup}>
                   <label style={styles.label}>ชื่อจริง</label>
                   <div style={styles.inputWrapper}>
@@ -199,11 +209,7 @@ export default function RegisterPage() {
                 style={loading ? { ...styles.button, opacity: 0.7 } : styles.button}
                 disabled={loading}
               >
-                {loading ? (
-                  <span>⏳ กำลังสร้างบัญชี...</span>
-                ) : (
-                  <span>🎉 สมัครสมาชิก</span>
-                )}
+                {loading ? <span>⏳ กำลังสร้างบัญชี...</span> : <span>🎉 สมัครสมาชิก</span>}
               </button>
             </form>
 
@@ -218,9 +224,7 @@ export default function RegisterPage() {
                 มีบัญชีอยู่แล้ว?
                 <Link href="/login" style={styles.link}> เข้าสู่ระบบ</Link>
               </p>
-              <Link href="/" style={styles.backLink}>
-                ← กลับหน้าหลัก
-              </Link>
+              <Link href="/" style={styles.backLink}>← กลับหน้าหลัก</Link>
             </div>
           </div>
         </div>
@@ -241,24 +245,8 @@ const styles = {
     overflow: 'hidden',
     fontFamily: "'Sarabun', 'Kanit', sans-serif",
   },
-  bgCircle1: {
-    position: 'absolute',
-    width: '400px',
-    height: '400px',
-    borderRadius: '50%',
-    background: 'rgba(234, 88, 12, 0.1)',
-    top: '-100px',
-    left: '-100px',
-  },
-  bgCircle2: {
-    position: 'absolute',
-    width: '300px',
-    height: '300px',
-    borderRadius: '50%',
-    background: 'rgba(251, 191, 36, 0.08)',
-    bottom: '-50px',
-    right: '-50px',
-  },
+  bgCircle1: { position: 'absolute', width: '400px', height: '400px', borderRadius: '50%', background: 'rgba(234, 88, 12, 0.1)', top: '-100px', left: '-100px' },
+  bgCircle2: { position: 'absolute', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(251, 191, 36, 0.08)', bottom: '-50px', right: '-50px' },
   container: {
     display: 'flex',
     maxWidth: '1000px',
@@ -279,166 +267,33 @@ const styles = {
     justifyContent: 'center',
     position: 'relative',
   },
-  brand: {
-    marginBottom: '35px',
-  },
-  brandIcon: {
-    fontSize: '3.5rem',
-    display: 'block',
-    marginBottom: '12px',
-  },
-  brandName: {
-    fontSize: '2.5rem',
-    fontWeight: '800',
-    color: 'white',
-    margin: '0 0 5px',
-  },
-  brandTag: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: '1rem',
-    margin: 0,
-  },
-  welcomeText: {
-    marginBottom: '25px',
-  },
-  welcomeTitle: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
-    color: 'white',
-    margin: '0 0 10px',
-  },
-  welcomeDesc: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: '1rem',
-    lineHeight: '1.7',
-    margin: 0,
-  },
-  benefits: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  benefitItem: {
-    color: 'white',
-    fontSize: '0.95rem',
-  },
-  catDecor: {
-    position: 'absolute',
-    bottom: '25px',
-    right: '25px',
-    fontSize: '2rem',
-    opacity: 0.5,
-  },
-  rightPanel: {
-    flex: 1.1,
-    padding: '45px 50px',
-    backgroundColor: 'white',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  formContainer: {
-    width: '100%',
-    maxWidth: '400px',
-  },
-  formHeader: {
-    marginBottom: '28px',
-  },
-  formTitle: {
-    fontSize: '1.8rem',
-    fontWeight: '700',
-    color: '#1a1a2e',
-    margin: '0 0 8px',
-  },
-  formSubtitle: {
-    color: '#6b7280',
-    fontSize: '1rem',
-    margin: 0,
-  },
-  inputRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '15px',
-  },
-  inputGroup: {
-    marginBottom: '18px',
-  },
-  label: {
-    display: 'block',
-    fontSize: '0.9rem',
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: '8px',
-  },
-  inputWrapper: {
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  inputIcon: {
-    position: 'absolute',
-    left: '15px',
-    fontSize: '1.1rem',
-    pointerEvents: 'none',
-  },
-  input: {
-    width: '100%',
-    padding: '14px 15px 14px 45px',
-    borderRadius: '12px',
-    border: '2px solid #e5e7eb',
-    fontSize: '0.95rem',
-    boxSizing: 'border-box',
-    outline: 'none',
-    transition: 'all 0.2s',
-    backgroundColor: '#fafafa',
-  },
-  button: {
-    width: '100%',
-    padding: '16px',
-    background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '14px',
-    fontSize: '1.05rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    boxShadow: '0 10px 25px rgba(234, 88, 12, 0.35)',
-    transition: 'all 0.3s',
-    marginTop: '8px',
-  },
-  divider: {
-    display: 'flex',
-    alignItems: 'center',
-    margin: '25px 0',
-    gap: '12px',
-  },
-  dividerLine: {
-    flex: 1,
-    height: '1px',
-    backgroundColor: '#e5e7eb',
-  },
-  dividerText: {
-    color: '#9ca3af',
-    fontSize: '0.85rem',
-  },
-  footer: {
-    textAlign: 'center',
-  },
-  footerText: {
-    color: '#6b7280',
-    margin: '0 0 12px',
-    fontSize: '0.95rem',
-  },
-  link: {
-    color: '#ea580c',
-    textDecoration: 'none',
-    fontWeight: '600',
-  },
-  backLink: {
-    display: 'inline-block',
-    color: '#9ca3af',
-    textDecoration: 'none',
-    fontSize: '0.9rem',
-    transition: 'color 0.2s',
-  },
+  brand: { marginBottom: '35px' },
+  brandIcon: { fontSize: '3.5rem', display: 'block', marginBottom: '12px' },
+  brandName: { fontSize: '2.5rem', fontWeight: '800', color: 'white', margin: '0 0 5px' },
+  brandTag: { color: 'rgba(255,255,255,0.8)', fontSize: '1rem', margin: 0 },
+  welcomeText: { marginBottom: '25px' },
+  welcomeTitle: { fontSize: '1.5rem', fontWeight: '700', color: 'white', margin: '0 0 10px' },
+  welcomeDesc: { color: 'rgba(255,255,255,0.85)', fontSize: '1rem', lineHeight: '1.7', margin: 0 },
+  benefits: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  benefitItem: { color: 'white', fontSize: '0.95rem' },
+  catDecor: { position: 'absolute', bottom: '25px', right: '25px', fontSize: '2rem', opacity: 0.5 },
+  rightPanel: { flex: 1.1, padding: '45px 50px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  formContainer: { width: '100%', maxWidth: '400px' },
+  formHeader: { marginBottom: '28px' },
+  formTitle: { fontSize: '1.8rem', fontWeight: '700', color: '#1a1a2e', margin: '0 0 8px' },
+  formSubtitle: { color: '#6b7280', fontSize: '1rem', margin: 0 },
+  inputRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' },
+  inputGroup: { marginBottom: '18px' },
+  label: { display: 'block', fontSize: '0.9rem', fontWeight: '600', color: '#374151', marginBottom: '8px' },
+  inputWrapper: { position: 'relative', display: 'flex', alignItems: 'center' },
+  inputIcon: { position: 'absolute', left: '15px', fontSize: '1.1rem', pointerEvents: 'none' },
+  input: { width: '100%', padding: '14px 15px 14px 45px', borderRadius: '12px', border: '2px solid #e5e7eb', fontSize: '0.95rem', boxSizing: 'border-box', outline: 'none', transition: 'all 0.2s', backgroundColor: '#fafafa' },
+  button: { width: '100%', padding: '16px', background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '1.05rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 10px 25px rgba(234, 88, 12, 0.35)', transition: 'all 0.3s', marginTop: '8px' },
+  divider: { display: 'flex', alignItems: 'center', margin: '25px 0', gap: '12px' },
+  dividerLine: { flex: 1, height: '1px', backgroundColor: '#e5e7eb' },
+  dividerText: { color: '#9ca3af', fontSize: '0.85rem' },
+  footer: { textAlign: 'center' },
+  footerText: { color: '#6b7280', margin: '0 0 12px', fontSize: '0.95rem' },
+  link: { color: '#ea580c', textDecoration: 'none', fontWeight: '600' },
+  backLink: { display: 'inline-block', color: '#9ca3af', textDecoration: 'none', fontSize: '0.9rem', transition: 'color 0.2s' },
 }

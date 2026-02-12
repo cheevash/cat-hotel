@@ -1,4 +1,6 @@
 'use client'
+import AdminCalendar from './AdminCalendar'
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
@@ -115,6 +117,7 @@ export default function AdminDashboard() {
     )
   }
 
+
   return (
     <div style={styles.page}>
       {/* Header */}
@@ -128,6 +131,7 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div style={styles.statsGrid}>
+        {/* ... (existing stats cards) */}
         <StatCard
           icon="📅"
           label="การจองวันนี้"
@@ -158,8 +162,16 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* NEW: Calendar Section */}
+      <div style={{ marginBottom: '25px' }}>
+        <h3 style={styles.cardTitle}>📅 ปฏิทินการจอง</h3>
+        <AdminCalendar />
+      </div>
+
       {/* Revenue & Rooms Row */}
       <div style={styles.rowGrid}>
+        {/* ... (existing content) */}
+
         {/* Revenue Card */}
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>💰 รายได้</h3>
@@ -260,6 +272,8 @@ export default function AdminDashboard() {
           <a href="/admin/bookings" style={styles.quickBtn}>📅 จัดการการจอง</a>
           <a href="/admin/customers" style={styles.quickBtn}>👥 จัดการลูกค้า</a>
           <a href="/admin/cats" style={styles.quickBtn}>🐱 จัดการแมว</a>
+          <a href="/admin/pricing" style={styles.quickBtn}>💰 จัดการราคา</a>
+          <a href="/admin/gallery" style={styles.quickBtn}>🖼️ จัดการแกลเลอรี่</a>
           <a href="/admin/reviews" style={styles.quickBtn}>⭐ จัดการรีวิว</a>
           <a href="/admin/settings" style={styles.quickBtn}>⚙️ ตั้งค่าระบบ</a>
         </div>
